@@ -23,27 +23,81 @@ let db, auth;
 // ... existing code ... -->
 let ordersUnsubscribe = null, usersUnsubscribe = null;
 
-// --- 6. ربط عناصر الصفحة (DOM Elements) ---
-// تم إزالة 'DOMContentLoaded' والربط مباشرة
-// لأن 'type="module"' يؤجل التنفيذ تلقائياً
-const loadingSpinner = document.getElementById('loading-spinner');
-const appContent = document.getElementById('app-content');
-// ... existing code ... -->
-const checkAllExpense = document.getElementById('check-all-expense');
-const checkAllIncome = document.getElementById('check-all-income');
+// --- 6. تعريف متغيرات عناصر الصفحة (DOM Elements) ---
+// (سيتم تعيين قيمها بعد تحميل الصفحة)
+let loadingSpinner, appContent, authScreen, mainApp,
+    loginForm, registerForm, authToggleLinks,
+    loginEmail, loginPassword, registerEmail, registerPassword,
+    loginPasswordToggle, registerPasswordToggle,
+    userInfo, userEmailSpan, userRoleSpan, logoutBtn,
+    addOrderForm, orderType, orderName, orderRef, orderDate,
+    expenseTableBody, incomeTableBody, filterSearch, filterDate, filterSort,
+    clearFiltersBtn, adminPanelBtn, adminPanel, usersTableBody,
+    closeAdminPanelBtn, toggleThemeBtn, sunIcon, moonIcon,
+    exportBtn, exportDropdown, exportCsvBtn, exportPdfBtn,
+    bulkDeleteBtn, checkAllExpense, checkAllIncome;
 
 
-// --- 7. تشغيل التطبيق ---
-try {
-    initializeAppAndAuth();
-    setupEventListeners();
-    initTheme();
-} catch (error) {
-    console.error("Fatal Error initializing app:", error);
-    if (loadingSpinner) {
-        loadingSpinner.innerHTML = "حدث خطأ فادح. يرجى تحديث الصفحة.";
+// --- 7. تشغيل التطبيق بعد تحميل الصفحة ---
+// (!!! هذا هو الإصلاح !!!)
+document.addEventListener('DOMContentLoaded', () => {
+    
+    // --- الخطوة 7أ: ربط كل العناصر الآن ---
+    loadingSpinner = document.getElementById('loading-spinner');
+    appContent = document.getElementById('app-content');
+    authScreen = document.getElementById('auth-screen');
+    mainApp = document.getElementById('main-app');
+    loginForm = document.getElementById('login-form');
+    registerForm = document.getElementById('register-form');
+    authToggleLinks = document.querySelectorAll('.auth-toggle');
+    loginEmail = document.getElementById('login-email');
+    loginPassword = document.getElementById('login-password');
+    registerEmail = document.getElementById('register-email');
+    registerPassword = document.getElementById('register-password');
+    loginPasswordToggle = document.getElementById('login-password-toggle');
+    registerPasswordToggle = document.getElementById('register-password-toggle');
+    userInfo = document.getElementById('user-info');
+    userEmailSpan = document.getElementById('user-email');
+    userRoleSpan = document.getElementById('user-role');
+    logoutBtn = document.getElementById('logout-btn');
+    addOrderForm = document.getElementById('add-order-form');
+    orderType = document.getElementById('order-type');
+    orderName = document.getElementById('order-name');
+    orderRef = document.getElementById('order-ref');
+    orderDate = document.getElementById('order-date');
+    expenseTableBody = document.getElementById('expense-table-body');
+    incomeTableBody = document.getElementById('income-table-body');
+    filterSearch = document.getElementById('filter-search');
+    filterDate = document.getElementById('filter-date');
+    filterSort = document.getElementById('filter-sort');
+    clearFiltersBtn = document.getElementById('clear-filters-btn');
+    adminPanelBtn = document.getElementById('admin-panel-btn');
+    adminPanel = document.getElementById('admin-panel');
+    usersTableBody = document.getElementById('users-table-body');
+    closeAdminPanelBtn = document.getElementById('close-admin-panel-btn');
+    toggleThemeBtn = document.getElementById('toggle-theme-btn');
+    sunIcon = document.getElementById('sun-icon');
+    moonIcon = document.getElementById('moon-icon');
+    exportBtn = document.getElementById('export-btn');
+    exportDropdown = document.getElementById('export-dropdown');
+    exportCsvBtn = document.getElementById('export-csv-btn');
+    exportPdfBtn = document.getElementById('export-pdf-btn');
+    bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+    checkAllExpense = document.getElementById('check-all-expense');
+    checkAllIncome = document.getElementById('check-all-income');
+    
+    // --- الخطوة 7ب: تشغيل التطبيق ---
+    try {
+        initializeAppAndAuth();
+        setupEventListeners();
+        initTheme();
+    } catch (error) {
+        console.error("Fatal Error initializing app:", error);
+        if (loadingSpinner) {
+            loadingSpinner.innerHTML = "حدث خطأ فادح. يرجى تحديث الصفحة.";
+        }
     }
-}
+});
 
 
 // --- 8. الوظائف الأساسية ---
