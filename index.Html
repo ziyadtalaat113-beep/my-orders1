@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>متتبع الأوردرات (سحابي + محلي)</title>
+    <!-- 1. Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 2. Google Font (Cairo) for Arabic -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- 3. Firebase SDKs (مكتبات فايربيز) -->
+    <script type="module">
+        // --- 1. استيراد المكتبات ---
+        // تم تحديث الإصدارات لتطابق النسخة التي لصقتها
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            addDoc, 
+            setDoc, 
+            onSnapshot, 
+            collection, 
+            query, 
+            enableIndexedDbPersistence 
+        } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+        // --- 2. بيانات الاتصال الخاصة بك (مهم جداً) ---
+        // تم تنظيف الكود - هذا هو الشكل الصحيح
+        const firebaseConfig = {
+            apiKey: "AIzaSyDWWBIZqHdy36GYfR1L4_BFFs4c18TXY2E",
+            authDomain: "order-c7dd2.firebaseapp.com",
+            projectId: "order-c7dd2",
+            storageBucket: "order-c7dd2.firebasestorage.app",
+            messagingSenderId: "741648683831",
+            appId: "1:741648683831:web:d768d0076ce51510c280b2",
+            measurementId: "G-2S1R8BMLCH"
+        };
+        // ----------------------------------------------------
+
+        // --- Global Variables ---
+        let db;
+        let auth;
+        let userId;
+        let allOrders = []; // Local cache
+        let ordersUnsubscribe = null; // To stop listening
+        const appId = "my-order-tracker"; // اسم التطبيق (ثابت)
+
+        // --- UI Elements ---
+        const appLoading = document.getElementById('app-loading');
+        const appContent = document.getElementById('app-content');
+        const orderForm = document.getElementById('order-form');
+        const typeSelect = document.getElementById('type');
+        const customerNameGroup = document.getElementById('customer-name-group');
+        const supplierNameGroup = document.getElementById('supplier-name-group');
+        const receiptsTbody = document.getElementById('receipts-tbody');
+        const expensesTbody = document.getElementById('expenses-tbody');
+        const ordersRecordSection = document.getElementById('orders-record-section');
+        const filterDateInput = document.getElementById('filter-date');
+        const clearFilterBtn = document.getElementById('clear-filter');
+        const exportCsvBtn = document.getElementById('export-csv');
+        const noReceiptsMessage = document.getElementById('no-receipts-message');
+        const noExpensesMessage = document.getElementById('no-expenses-message');
+        const searchInput = document.getElementById('search-input');
+
+        // --- Core Functions ---
+
+        // 1. Initialize Firebase App
+        async function initializeAppAndAuth() {
+            try {
+                // يتم تهيئة التطبيق مرة واحدة هنا
+                const app = initializeApp(firebaseConfig); 
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // --- ⭐️ تفعيل ميزة العمل أوفلاين ⭐️ ---
+                // ده السطر اللي بيخلي التطبيق يحفظ البيانات محلياً لو النت فصل
+                await enableIndexedDbPersistence(db); 
+                // ---------------------------------------
+
+                // 2. Sign in user anonymously
+                await signInAnonymously(auth);
+
+                // 3. Listen for auth changes
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        // User is signed in. Now we can load their data.
+                        listenToOrders();
+                    } else {
+                        // User is signed out.
+                        console.log("User is signed out.");
+                        appLoading.innerText = "فشل تسجيل الدخول المجهول. يرجى تحديث الصفحة.";
+                    }
+                });
+
+            } catch (error) {
+                console.error("Firebase Initialization Error:", error);
+                appLoading.classList.remove('hidden');
+                appLoading.innerHTML = `
+                    <p class="text-xl text-red-600 font-semibold">فشل الاتصال بقاعدة البيانات!</p>
+                    <p class="mt-2 text-gray-600">هل قمت بلصق بيانات <code class="bg-gray-200 p-1 rounded">firebaseConfig</code> الخاصة بك في الكود؟</p>
+                `;
+                appContent.classList.add('hidden');
+            }
+        }
+
+        // 2. Listen for real-time data from Firestore
+        function listenToOrders() {
+            if (ordersUnsubscribe) ordersUnsubscribe(); // Stop previous listener
+
+            const userOrdersCollection = collection(db, "artifacts", appId, "users", userId, "orders");
+            const q = query(userOrdersCollection);
+
+            ordersUnsubscribe = onSnapshot(q, (snapshot) => {
+                allOrders = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                })).sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by date
+                
+                renderTables(); // Re-render the table with fresh data
+                appLoading.classList.add('hidden');
+                appContent.classList.remove('hidden');
+
+            }, (error) => {
+                console.error("Error listening to orders: ", error);
+                appLoading.innerText = "فشل تحميل البيانات. يرجى المحاولة مرة أخرى.";
+            });
+        }
+        
+        // 3. Render Tables (نفس الكود من النسخة المحلية)
+        function renderTables() {
+            const filterDate = filterDateInput.value;
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            
+            let filteredOrders = allOrders;
+
+            if (filterDate) {
+                filteredOrders = filteredOrders.filter(order => order.date === filterDate);
+            }
+
+            if (searchTerm) {
+                filteredOrders = filteredOrders.filter(order => {
+                    const customerMatch = order.customerName && order.customerName.toLowerCase().includes(searchTerm);
+                    const supplierMatch = order.supplierName && order.supplierName.toLowerCase().includes(searchTerm);
+                    const refMatch = order.referenceId && order.referenceId.toLowerCase().includes(searchTerm);
+                    return customerMatch || supplierMatch || refMatch;
+                });
+            }
+
+            const receipts = filteredOrders.filter(order => order.type === 'استلام');
+            const expenses = filteredOrders.filter(order => order.type === 'صرف');
+
+            receiptsTbody.innerHTML = '';
+            expensesTbody.innerHTML = '';
+
+            noReceiptsMessage.classList.toggle('hidden', receipts.length > 0);
+            noExpensesMessage.classList.toggle('hidden', expenses.length > 0);
+
+            receipts.forEach(order => {
+                const isCompleted = order.status === 'completed';
+                const rowClass = isCompleted ? 'bg-green-100 hover:bg-green-200' : 'bg-yellow-100 hover:bg-yellow-200';
+                const statusBtnClass = isCompleted ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-700';
+                const statusIcon = isCompleted ? '&#10003;' : '&nbsp;';
+
+                const row = document.createElement('tr');
+                row.className = `transition-colors ${rowClass}`;
+                row.innerHTML = `
+                    <td class="p-3 border-b border-gray-200">${order.type}</td>
+                    <td class="p-3 border-b border-gray-200">${order.supplierName || '---'}</td>
+                    <td class="p-3 border-b border-gray-200">${order.referenceId}</td>
+                    <td class="p-3 border-b border-gray-200">${order.date}</td>
+                    <td class="p-3 border-b border-gray-200">
+                        <button 
+                            data-id="${order.id}" 
+                            data-status="${order.status}"
+                            class="toggle-status-btn w-7 h-7 rounded-md flex items-center justify-center font-bold ${statusBtnClass} transition-all">
+                            ${statusIcon}
+                        </button>
+                    </td>
+                `;
+                receiptsTbody.appendChild(row);
+            });
+
+            expenses.forEach(order => {
+                const isCompleted = order.status === 'completed';
+                const rowClass = isCompleted ? 'bg-green-100 hover:bg-green-200' : 'bg-yellow-100 hover:bg-yellow-200';
+                const statusBtnClass = isCompleted ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-700';
+                const statusIcon = isCompleted ? '&#10003;' : '&nbsp;';
+
+                const row = document.createElement('tr');
+                row.className = `transition-colors ${rowClass}`;
+                row.innerHTML = `
+                    <td class="p-3 border-b border-gray-200">${order.type}</td>
+                    <td class="p-3 border-b border-gray-200">${order.customerName || '---'}</td>
+                    <td class="p-3 border-b border-gray-200">${order.referenceId}</td>
+                    <td class="p-3 border-b border-gray-200">${order.date}</td>
+                    <td class="p-3 border-b border-gray-200">
+                        <button 
+                            data-id="${order.id}" 
+                            data-status="${order.status}"
+                            class="toggle-status-btn w-7 h-7 rounded-md flex items-center justify-center font-bold ${statusBtnClass} transition-all">
+                            ${statusIcon}
+                        </button>
+                    </td>
+                `;
+                expensesTbody.appendChild(row);
+            });
+        }
+
+        // 4. Handle Form Submit (Add Order)
+        async function handleAddOrder(e) {
+            e.preventDefault();
+            if (!userId) return alert("المستخدم غير مسجل. يرجى تحديث الصفحة.");
+
+            const formData = new FormData(orderForm);
+            const newOrder = {
+                type: formData.get('type'),
+                customerName: formData.get('customer-name') || '',
+                supplierName: formData.get('supplier-name') || '',
+                referenceId: formData.get('reference-id'),
+                date: formData.get('date'),
+                status: 'pending',
+                createdAt: new Date().toISOString()
+            };
+
+            try {
+                const userOrdersCollection = collection(db, "artifacts", appId, "users", userId, "orders");
+                await addDoc(userOrdersCollection, newOrder);
+                // Data will re-render automatically thanks to onSnapshot
+                orderForm.reset();
+                toggleFormFields();
+            } catch (error) {
+                console.error("Error adding document: ", error);
+                alert("حدث خطأ أثناء إضافة الأوردر. (هل أنت متصل بالإنترنت؟)");
+            }
+        }
+
+        // 5. Handle Status Toggle
+        async function handleToggleStatus(e) {
+            if (!e.target.classList.contains('toggle-status-btn')) return;
+            if (!userId) return alert("المستخدم غير مسجل. يرجى تحديث الصفحة.");
+
+            const btn = e.target;
+            const id = btn.dataset.id;
+            const currentStatus = btn.dataset.status;
+            const newStatus = currentStatus === 'pending' ? 'completed' : 'pending';
+            
+            try {
+                const docRef = doc(db, "artifacts", appId, "users", userId, "orders", id);
+                await setDoc(docRef, { status: newStatus }, { merge: true });
+                // Data will re-render automatically thanks to onSnapshot
+            } catch (error) {
+                console.error("Error updating status: ", error);
+                alert("حدث خطأ أثناء تحديث الحالة.");
+            }
+        }
+
+        // 6. Toggle Form Fields based on Type
+        function toggleFormFields() {
+            if (typeSelect.value === 'صرف') {
+                customerNameGroup.classList.remove('hidden');
+                supplierNameGroup.classList.add('hidden');
+            } else {
+                customerNameGroup.classList.add('hidden');
+                supplierNameGroup.classList.remove('hidden');
+            }
+        }
+
+        // 7. Export to CSV (نفس الكود من النسخة المحلية)
+        function exportToCSV() {
+            if (allOrders.length === 0) {
+                alert("لا توجد بيانات لتصديرها.");
+                return;
+            }
+
+            const headers = "النوع,اسم العميل,اسم المورد,الرقم المرجعي,التاريخ,الحالة\n";
+            const csvContent = allOrders.map(order => {
+                return [
+                    `"${order.type}"`,
+                    `"${order.customerName || ''}"`,
+                    `"${order.supplierName || ''}"`,
+                    `"${order.referenceId}"`,
+                    `"${order.date}"`,
+                    `"${order.status}"`
+                ].join(',');
+            }).join('\n');
+
+            const fullCsv = headers + csvContent;
+            
+            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+            const blob = new Blob([bom, fullCsv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute("href", url);
+            link.setAttribute("download", "orders.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- Event Listeners ---
+        orderForm.addEventListener('submit', handleAddOrder);
+        typeSelect.addEventListener('change', toggleFormFields);
+        ordersRecordSection.addEventListener('click', handleToggleStatus);
+        
+        filterDateInput.addEventListener('change', renderTables);
+        searchInput.addEventListener('input', renderTables);
+
+        clearFilterBtn.addEventListener('click', () => {
+            filterDateInput.value = '';
+            searchInput.value = '';
+            renderTables();
+        });
+        exportCsvBtn.addEventListener('click', exportToCSV);
+
+        // --- Start Application ---
+        initializeAppAndAuth(); // Run the app
+
+    </script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f7fafc; /* Tailwind bg-gray-100 */
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <!-- Loading State -->
+    <div id="app-loading" class="flex items-center justify-center min-h-screen">
+        <p class="text-2xl text-gray-500">جاري تحميل التطبيق والاتصال بقاعدة البيانات...</p>
+    </div>
+
+    <!-- Main App Content (Hidden by default) -->
+    <div id="app-content" class="container mx-auto p-4 md:p-8 hidden">
+        
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-indigo-700">نظام تتبع الأوردرات (سحابي + محلي)</h1>
+            <p class="text-xl text-gray-600 mt-2">إدارة معاملات الصرف والاستلام بسهولة.</p>
+        </header>
+
+        <!-- Section 1: Add New Order Form -->
+        <section class="mb-8 p-6 bg-white rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold mb-6 border-b pb-3">إضافة أوردر جديد</h2>
+            <form id="order-form" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Type -->
+                    <div>
+                        <label for="type" class="block text-sm font-medium text-gray-700 mb-2">نوع العملية</label>
+                        <select id="type" name="type" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="صرف">صرف (لعميل)</option>
+                            <option value="استلام">استلام (من مورد)</option>
+                        </select>
+                    </div>
+
+                    <!-- Customer Name (Conditional) -->
+                    <div id="customer-name-group">
+                        <label for="customer-name" class="block text-sm font-medium text-gray-700 mb-2">اسم العميل</label>
+                        <input type="text" id="customer-name" name="customer-name" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <!-- Supplier Name (Conditional) -->
+                    <div id="supplier-name-group" class="hidden">
+                        <label for="supplier-name" class="block text-sm font-medium text-gray-700 mb-2">اسم المورد</label>
+                        <input type="text" id="supplier-name" name="supplier-name" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <!-- Reference ID -->
+                    <div>
+                        <label for="reference-id" class="block text-sm font-medium text-gray-700 mb-2">الرقم المرجعي</label>
+                        <input type="text" id="reference-id" name="reference-id" required class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <!-- Date -->
+                    <div>
+                        <label for="date" class="block text-sm font-medium text-gray-700 mb-2">التاريخ</label>
+                        <input type="date" id="date" name="date" required class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+                
+                <div class="text-left pt-4">
+                    <button type="submit" class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all">
+                        إضافة الأوردر
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Section 2: Filters and Export -->
+        <section class="mb-6 p-6 bg-white rounded-lg shadow-md">
+            <div class="flex flex-wrap items-end justify-between gap-4">
+                
+                <h2 class="text-2xl font-semibold basis-full">الفلاتر والبحث</h2>
+
+                <div class="flex flex-wrap items-end gap-4 w-full">
+                    <!-- Search Filter -->
+                    <div class="flex-grow">
+                        <label for="search-input" class="block text-sm font-medium text-gray-700 mb-2">بحث سريع</label>
+                        <input type="text" id="search-input" placeholder="الاسم أو الرقم المرجعي..." class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <!-- Date Filter -->
+                    <div class="flex-grow">
+                        <label for="filter-date" class="block text-sm font-medium text-gray-700 mb-2">فلترة حسب التاريخ</label>
+                        <input type="date" id="filter-date" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <button id="clear-filter" class="px-4 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                        مسح الفلتر
+                    </button>
+                    <button id="export-csv" class="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                        تصدير CSV
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Orders Tables -->
+        <section id="orders-record-section" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- 3.1: Expenses Table (المصروفات) -->
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <h3 class="text-xl font-semibold p-4 bg-gray-50 border-b border-gray-200">سجل المصروفات (لعميل)</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-max text-right">
+                        <thead class="bg-gray-100 border-b border-gray-200">
+                            <tr>
+                                <th class="p-4 text-sm font-semibold text-gray-600 uppercase">النوع</th>
+                                <th class="p-4 text-sm font-semibold text-gray-600 uppercase">العميل</th>
+                                <th class="p-4 text-sm font-semibold text-gray-600 uppercase">رقم مرجعي</th>
+                                <th class="p-4 text-sm font-semibold text-gray-600 uppercase">التاريخ</th>
+                                <th class="p-4 text-sm font-semibold text-gray-600 uppercase">الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expenses-tbody" class="divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                    <div id="no-expenses-message" class="text-center p-8 text-gray-500 text-lg hidden">
+                        لا توجد مصروفات تطابق معايير البحث.
+                    </div>
+                </div>
+            </div>
+            <!-- 3.2: Receipts Table (الاستلامات) -->
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <h3 class="text-xl font-semibold p-4 bg-gray-50 border-b border-gray-200">سجل الاستلامات (من مورد)</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-max text-right">
+                        <thead class="bg-gray-100 border-b border-gray-200">
+                            <tr>
+                                <th class="p-4 text-sm font-semibold text-gray-600 uppercase">النوع</th>
+                                <th class="p-4 text-sm font-semibold text-gray-600 uppercase">المورد</th>
+                                <th class="p-4 text-sm font-semibold text-gray-600 uppercase">رقم مرجعي</th>
+                                <th class="p-4 text-sm font-semibold text-gray-600 uppercase">التاريخ</th>
+                                <th class="p-4 text-sm font-semibold text-gray-600 uppercase">الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="receipts-tbody" class="divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                    <div id="no-receipts-message" class="text-center p-8 text-gray-500 text-lg hidden">
+                        لا توجد استلامات تطابق معايير البحث.
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
+
