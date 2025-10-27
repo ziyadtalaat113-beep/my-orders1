@@ -3,37 +3,339 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>متتبع الأوردرات (نظام صلاحيات)</title>
-    <!-- 1. Tailwind CSS -->
+    <title>متتبع الأوردرات</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 2. Google Font (Cairo) for Arabic -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- 3. Firebase SDKs (مكتبات فايربيز) -->
-    <script type="module">
-        // --- 1. استيراد المكتبات ---
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
-        import { 
-            getAuth, 
-            signInWithEmailAndPassword, 
-            createUserWithEmailAndPassword, 
-            signOut, 
-            onAuthStateChanged 
-        } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
-        import { 
-            getFirestore, 
-            doc, 
-            addDoc, 
-            setDoc, 
-            getDoc,
-            onSnapshot, 
-            collection, 
-            query, 
-            enableIndexedDbPersistence,
-            updateDoc
-        } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+    <!-- مكتبة الأيقونات (علشان العين والقمر والشمس) -->
+    <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
 
-        // --- 2. بيانات الاتصال الخاصة بك (مهم جداً) ---
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        /* الوضع الليلي */
+        .dark {
+            --bg-primary: #1a202c; /* gray-900 */
+            --bg-secondary: #2d3748; /* gray-800 */
+            --bg-tertiary: #4a5568; /* gray-700 */
+            --text-primary: #e2e8f0; /* gray-200 */
+            --text-secondary: #a0aec0; /* gray-400 */
+            --border-color: #4a5568; /* gray-700 */
+            --accent-color: #48bb78; /* green-500 */
+            --accent-hover: #38a169; /* green-600 */
+            --yellow-bg: #4a4a00; /* Dark yellow */
+            --green-bg: #2f4538; /* Dark green */
+        }
+        /* الوضع النهاري (الافتراضي) */
+        :root {
+            --bg-primary: #f7fafc; /* gray-50 */
+            --bg-secondary: #ffffff; /* white */
+            --bg-tertiary: #edf2f7; /* gray-200 */
+            --text-primary: #1a202c; /* gray-900 */
+            --text-secondary: #4a5568; /* gray-700 */
+            --border-color: #e2e8f0; /* gray-300 */
+            --accent-color: #38a169; /* green-600 */
+            --accent-hover: #2f855a; /* green-700 */
+            --yellow-bg: #fefcbf; /* yellow-100 */
+            --green-bg: #c6f6d5; /* green-200 */
+        }
+        
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+        }
+        .input-field {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        .input-field:focus {
+            background-color: var(--bg-secondary);
+            border-color: var(--accent-color);
+            outline: none;
+        }
+        .btn-primary {
+            background-color: var(--accent-color);
+            color: white;
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+        }
+        .btn-secondary {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        .btn-secondary:hover {
+            background-color: var(--border-color);
+        }
+        .table-header {
+            background-color: var(--bg-tertiary);
+            border-bottom: 2px solid var(--border-color);
+        }
+        .table-row {
+            border-bottom: 1px solid var(--border-color);
+        }
+        .status-pending {
+            background-color: var(--yellow-bg);
+        }
+        .status-completed {
+            background-color: var(--green-bg);
+        }
+        .password-toggle {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+        .loader {
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--accent-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* إخفاء الأسهم في حقول الأرقام */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- شاشة التحميل -->
+    <div id="loader-screen" class="fixed inset-0 flex flex-col items-center justify-center z-50" style="background-color: var(--bg-primary);">
+        <div class="loader"></div>
+        <p class="mt-4 text-lg font-semibold">جاري تحميل التطبيق...</p>
+    </div>
+
+    <!-- شاشة تسجيل الدخول -->
+    <div id="auth-screen" class="hidden min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md">
+            <div class="card p-8 rounded-lg shadow-lg">
+                <h2 id="auth-title" class="text-3xl font-bold text-center mb-6">تسجيل الدخول</h2>
+                
+                <form id="auth-form" class="space-y-6">
+                    <div>
+                        <label for="email" class="block text-sm font-medium mb-2">اسم المستخدم (الإيميل)</label>
+                        <input type="email" id="email" class="input-field w-full p-3 rounded-md" required>
+                    </div>
+                    
+                    <div class="relative">
+                        <label for="password" class="block text-sm font-medium mb-2">كلمة المرور</label>
+                        <input type="password" id="password" class="input-field w-full p-3 rounded-md pr-10" required>
+                        <span class="password-toggle" onclick="togglePasswordVisibility('password')">
+                            <ion-icon name="eye-off-outline" id="password-icon"></ion-icon>
+                        </span>
+                    </div>
+
+                    <!-- لإنشاء حساب جديد -->
+                    <div id="confirm-password-field" class="hidden relative">
+                        <label for="confirm-password" class="block text-sm font-medium mb-2">تأكيد كلمة المرور</label>
+                        <input type="password" id="confirm-password" class="input-field w-full p-3 rounded-md pr-10">
+                         <span class="password-toggle" onclick="togglePasswordVisibility('confirm-password')">
+                            <ion-icon name="eye-off-outline" id="confirm-password-icon"></ion-icon>
+                        </span>
+                    </div>
+
+                    <p id="auth-error" class="text-red-500 text-sm hidden"></p>
+
+                    <button type="submit" id="auth-button" class="btn-primary w-full p-3 rounded-md font-bold">تسجيل الدخول</button>
+                </form>
+
+                <p class="text-center mt-6 text-sm">
+                    <a href="#" id="toggle-auth-mode" class="text-blue-500 hover:underline">ليس لديك حساب؟ إنشاء حساب جديد</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- التطبيق الرئيسي -->
+    <div id="app-screen" class="hidden">
+        
+        <!-- الهيدر -->
+        <header class="card shadow-md sticky top-0 z-40">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-200">متتبع الأوردرات والمعاملات</h1>
+                <div class="flex items-center space-x-4 rtl:space-x-reverse">
+                    <button id="dark-mode-toggle" class="p-2 rounded-full focus:outline-none" style="color: var(--text-secondary);">
+                        <!-- الأيقونة تتغير بالجافاسكريبت -->
+                        <ion-icon name="moon-outline" class="w-6 h-6"></ion-icon>
+                    </button>
+                    <div class="flex items-center space-x-2 rtl:space-x-reverse">
+                        <span id="user-email-display" class="text-sm font-medium hidden md:block" style="color: var(--text-secondary);"></span>
+                        <span id="user-role-display" class="text-xs font-bold px-2 py-0.5 rounded-full hidden md:inline-block"></span>
+                    </div>
+                    <button id="logout-button" class="text-sm font-medium text-red-500 hover:underline">تسجيل الخروج</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="container mx-auto p-4 md:p-6">
+            
+            <!-- رسالة خطأ عامة -->
+            <div id="app-error" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-6" role="alert">
+                <strong class="font-bold">خطأ!</strong>
+                <span id="app-error-message" class="block sm:inline"></span>
+            </div>
+
+            <!-- لوحة تحكم الأدمن (للأدمن فقط) -->
+            <div id="admin-panel" class="hidden card p-6 rounded-lg shadow-md mb-6">
+                <h2 class="text-xl font-bold mb-4">لوحة تحكم الأدمن (إدارة الصلاحيات)</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead class="table-header">
+                            <tr>
+                                <th class="p-3 text-right">المستخدم (الإيميل)</th>
+                                <th class="p-3 text-right">الصلاحية الحالية</th>
+                                <th class="p-3 text-right">تغيير الصلاحية</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-list-body">
+                            <!-- يتم ملؤها بالجافاسكريبت -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- إضافة أوردر جديد (للأدمن فقط) -->
+            <div id="add-order-panel" class="hidden card p-6 rounded-lg shadow-md mb-6">
+                <h2 class="text-xl font-bold mb-4">أوردر جديد</h2>
+                <form id="add-order-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <!-- نوع العملية -->
+                    <div class="md:col-span-1">
+                        <label for="order-type" class="block text-sm font-medium mb-2">نوع العملية</label>
+                        <select id="order-type" class="input-field w-full p-3 rounded-md">
+                            <option value="expense">صرف (لعميل)</option>
+                            <option value="income">استلام (من مورد)</option>
+                        </select>
+                    </div>
+                    <!-- اسم العميل/المورد -->
+                    <div class="md:col-span-1">
+                        <label for="order-name" class="block text-sm font-medium mb-2">الاسم</label>
+                        <input type="text" id="order-name" class="input-field w-full p-3 rounded-md" placeholder="اسم العميل أو المورد">
+                    </div>
+                    <!-- الرقم المرجعي -->
+                    <div class="md:col-span-1">
+                        <label for="order-ref" class="block text-sm font-medium mb-2">الرقم المرجعي</label>
+                        <input type="text" id="order-ref" class="input-field w-full p-3 rounded-md" placeholder="e.g., #1005">
+                    </div>
+                    <!-- التاريخ -->
+                    <div class="md:col-span-1">
+                        <label for="order-date" class="block text-sm font-medium mb-2">التاريخ</label>
+                        <input type="date" id="order-date" class="input-field w-full p-3 rounded-md">
+                    </div>
+                    <!-- زر الإضافة -->
+                    <div class="md:col-span-1 flex items-end">
+                        <button type="submit" class="btn-primary w-full p-3 rounded-md font-bold">إضافة الأوردر</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- سجل الأوردرات والفلاتر -->
+            <div class="card p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-bold mb-4">سجل الأوردرات</h2>
+                
+                <!-- الفلاتر والبحث -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                    <div>
+                        <label for="filter-search" class="block text-sm font-medium mb-2">بحث سريع</label>
+                        <input type="text" id="filter-search" class="input-field w-full p-2 rounded-md" placeholder="ابحث بالاسم أو الرقم المرجعي...">
+                    </div>
+                    <div>
+                        <label for="filter-date" class="block text-sm font-medium mb-2">فلترة حسب التاريخ</label>
+                        <input type="date" id="filter-date" class="input-field w-full p-2 rounded-md">
+                    </div>
+                    <div>
+                        <label for="filter-sort" class="block text-sm font-medium mb-2">ترتيب حسب</label>
+                        <select id="filter-sort" class="input-field w-full p-2 rounded-md">
+                            <option value="date-desc">التاريخ (الأحدث أولاً)</option>
+                            <option value="date-asc">التاريخ (الأقدم أولاً)</option>
+                            <option value="name-asc">الاسم (أ-ي)</option>
+                            <option value="name-desc">الاسم (ي-أ)</option>
+                            <option value="ref-asc">الرقم المرجعي (تصاعدي)</option>
+                            <option value="ref-desc">الرقم المرجعي (تنازلي)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end space-x-2 rtl:space-x-reverse">
+                        <button id="clear-filters" class="btn-secondary w-full p-2 rounded-md">مسح الفلتر</button>
+                        <button id="export-csv" class="btn-primary w-full p-2 rounded-md">تصدير CSV</button>
+                    </div>
+                </div>
+
+                <!-- الجداول المقسمة -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <!-- جدول المصروفات (يمين) -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3 text-center">سجل المصروفات (لعميل)</h3>
+                        <div class="overflow-x-auto border border-[var(--border-color)] rounded-lg">
+                            <table class="min-w-full">
+                                <thead class="table-header">
+                                    <tr>
+                                        <th class="p-3 text-right">العميل</th>
+                                        <th class="p-3 text-right">الرقم المرجعي</th>
+                                        <th class="p-3 text-right">التاريخ</th>
+                                        <th class="p-3 text-right">الحالة</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="expenses-table-body">
+                                    <!-- يتم ملؤها بالجافاسكريبت -->
+                                </tbody>
+                            </table>
+                             <p id="no-expenses-msg" class="text-center p-4" style="color: var(--text-secondary);">لا توجد مصروفات لعرضها.</p>
+                        </div>
+                    </div>
+
+                    <!-- جدول الاستلامات (شمال) -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3 text-center">سجل الاستلامات (من مورد)</h3>
+                        <div class="overflow-x-auto border border-[var(--border-color)] rounded-lg">
+                            <table class="min-w-full">
+                                <thead class="table-header">
+                                    <tr>
+                                        <th class="p-3 text-right">المورد</th>
+                                        <th class="p-3 text-right">الرقم المرجعي</th>
+                                        <th class="p-3 text-right">التاريخ</th>
+                                        <th class="p-3 text-right">الحالة</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="income-table-body">
+                                    <!-- يتم ملؤها بالجافاسكريبت -->
+                                </tbody>
+                            </table>
+                            <p id="no-income-msg" class="text-center p-4" style="color: var(--text-secondary);">لا توجد استلامات لعرضها.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        // --- 1. بيانات الاتصال الخاصة بك (مهم جداً) ---
+        // !!! انسخ كود firebaseConfig اللي جبته من موقع فايربيز وحطه هنا !!!
         const firebaseConfig = {
             apiKey: "AIzaSyDWWBIZqHdy36GYfR1L4_BFFs4c18TXY2E",
             authDomain: "order-c7dd2.firebaseapp.com",
@@ -43,784 +345,663 @@
             appId: "1:741648683831:web:d768d0076ce51510c280b2",
             measurementId: "G-2S1R8BMLCH"
         };
-        // ----------------------------------------------------
         
-        // --- ⭐️ الخطوة 1: تعريف هوية الأدمن الرئيسي ⭐️ ---
+        // --- 2. تعريف هوية الأدمن الرئيسي ⭐️ ---
         // !!! اكتب إيميلك اللي هتسجل بيه أول مرة هنا !!!
-        // هذا الإيميل سيأخذ صلاحية "أدمن" تلقائياً
         const SUPER_ADMIN_EMAIL = "ziyad@order.com";
         // ----------------------------------------------------
 
-        // --- Global Variables ---
+
+        // --- 3. تهيئة التطبيق (لا تعدل هذا الجزء) ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword, 
+            signOut 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            getDoc, 
+            setDoc, 
+            addDoc, 
+            updateDoc, 
+            onSnapshot, 
+            collection, 
+            query, 
+            where, 
+            Timestamp,
+            enableIndexedDbPersistence
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+
+        // اسم التطبيق الثابت (يجب أن يتطابق مع قواعد الأمان)
+        const appId = "my-order-tracker";
+
+        // تهيئة خدمات Firebase
+        let app;
         let db;
         let auth;
+        let analytics;
+
+        // متغيرات حالة التطبيق
         let userId;
         let userRole = 'guest'; // 'guest' or 'admin'
-        let allOrders = []; 
+        let allOrders = [];
         let allUsers = []; // Local cache for admin panel
-        let ordersUnsubscribe = null; 
-        let usersUnsubscribe = null; 
-        const appId = "my-order-tracker"; // اسم التطبيق (ثابت)
+        let ordersUnsubscribe = null;
+        let usersUnsubscribe = null;
 
-        // --- UI Elements ---
-        const appLoading = document.getElementById('app-loading');
-        const appContent = document.getElementById('app-content');
+        // عناصر الواجهة
+        const loaderScreen = document.getElementById('loader-screen');
         const authScreen = document.getElementById('auth-screen');
-        const mainApp = document.getElementById('main-app');
-        
-        const loginForm = document.getElementById('login-form');
-        const registerForm = document.getElementById('register-form');
-        const loginError = document.getElementById('login-error');
-        const registerError = document.getElementById('register-error');
-        const showRegisterLink = document.getElementById('show-register');
-        const showLoginLink = document.getElementById('show-login');
-        
-        const userEmailDisplay = document.getElementById('user-email');
-        const userRoleDisplay = document.getElementById('user-role');
+        const appScreen = document.getElementById('app-screen');
+        const authForm = document.getElementById('auth-form');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordField = document.getElementById('confirm-password-field');
+        const confirmPasswordInput = document.getElementById('confirm-password');
+        const authTitle = document.getElementById('auth-title');
+        const authButton = document.getElementById('auth-button');
+        const toggleAuthModeLink = document.getElementById('toggle-auth-mode');
+        const authError = document.getElementById('auth-error');
         const logoutButton = document.getElementById('logout-button');
-        const toggleDarkModeBtn = document.getElementById('toggle-dark-mode');
-
-        const addOrderSection = document.getElementById('add-order-section');
-        const adminPanelSection = document.getElementById('admin-panel-section');
-        const usersTbody = document.getElementById('users-tbody');
-        
-        const orderForm = document.getElementById('order-form');
-        const typeSelect = document.getElementById('type');
-        const customerNameGroup = document.getElementById('customer-name-group');
-        const supplierNameGroup = document.getElementById('supplier-name-group');
-        
-        const receiptsTbody = document.getElementById('receipts-tbody');
-        const expensesTbody = document.getElementById('expenses-tbody');
-        const ordersRecordSection = document.getElementById('orders-record-section');
+        const userEmailDisplay = document.getElementById('user-email-display');
+        const userRoleDisplay = document.getElementById('user-role-display');
+        const appError = document.getElementById('app-error');
+        const appErrorMessage = document.getElementById('app-error-message');
+        const adminPanel = document.getElementById('admin-panel');
+        const userListBody = document.getElementById('user-list-body');
+        const addOrderPanel = document.getElementById('add-order-panel');
+        const addOrderForm = document.getElementById('add-order-form');
+        const orderTypeInput = document.getElementById('order-type');
+        const orderNameInput = document.getElementById('order-name');
+        const orderRefInput = document.getElementById('order-ref');
+        const orderDateInput = document.getElementById('order-date');
+        const expensesTableBody = document.getElementById('expenses-table-body');
+        const incomeTableBody = document.getElementById('income-table-body');
+        const noExpensesMsg = document.getElementById('no-expenses-msg');
+        const noIncomeMsg = document.getElementById('no-income-msg');
+        const filterSearchInput = document.getElementById('filter-search');
         const filterDateInput = document.getElementById('filter-date');
-        const clearFilterBtn = document.getElementById('clear-filter');
-        const exportCsvBtn = document.getElementById('export-csv');
-        const noReceiptsMessage = document.getElementById('no-receipts-message');
-        const noExpensesMessage = document.getElementById('no-expenses-message');
-        const searchInput = document.getElementById('search-input');
+        const filterSortInput = document.getElementById('filter-sort');
+        const clearFiltersButton = document.getElementById('clear-filters');
+        const exportCsvButton = document.getElementById('export-csv');
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
 
-        // --- Core Functions ---
 
-        // 1. Initialize Firebase App
+        // --- 4. الوضع الليلي (Dark Mode) ---
+        
+        // التحقق من الإعداد المحفوظ عند تحميل الصفحة
+        function applyInitialTheme() {
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                updateDarkModeIcon(true);
+            } else {
+                document.documentElement.classList.remove('dark');
+                updateDarkModeIcon(false);
+            }
+        }
+        
+        function updateDarkModeIcon(isDark) {
+            const icon = darkModeToggle.querySelector('ion-icon');
+            if (isDark) {
+                icon.setAttribute('name', 'sunny-outline');
+            } else {
+                icon.setAttribute('name', 'moon-outline');
+            }
+        }
+
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            if (isDark) {
+                localStorage.theme = 'dark';
+            } else {
+                localStorage.theme = 'light';
+            }
+            updateDarkModeIcon(isDark);
+        }
+
+        // --- 5. وظائف إظهار كلمة المرور ---
+        window.togglePasswordVisibility = function(fieldId) {
+            const input = document.getElementById(fieldId);
+            const icon = document.getElementById(`${fieldId}-icon`);
+            if (input.type === "password") {
+                input.type = "text";
+                icon.setAttribute('name', 'eye-outline');
+            } else {
+                input.type = "password";
+                icon.setAttribute('name', 'eye-off-outline');
+            }
+        }
+
+        // --- 6. وظائف المصادقة (Authentication) ---
+        
+        let isRegisterMode = false;
+
+        function toggleAuthMode() {
+            isRegisterMode = !isRegisterMode;
+            authForm.reset();
+            authError.classList.add('hidden');
+            
+            if (isRegisterMode) {
+                authTitle.textContent = 'إنشاء حساب جديد';
+                authButton.textContent = 'إنشاء حساب';
+                toggleAuthModeLink.textContent = 'لديك حساب بالفعل؟ تسجيل الدخول';
+                confirmPasswordField.classList.remove('hidden');
+            } else {
+                authTitle.textContent = 'تسجيل الدخول';
+                authButton.textContent = 'تسجيل الدخول';
+                toggleAuthModeLink.textContent = 'ليس لديك حساب؟ إنشاء حساب جديد';
+                confirmPasswordField.classList.add('hidden');
+            }
+        }
+
+        async function handleAuthFormSubmit(e) {
+            e.preventDefault();
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            authError.classList.add('hidden');
+            authButton.disabled = true;
+
+            try {
+                if (isRegisterMode) {
+                    // --- إنشاء حساب ---
+                    const confirmPassword = confirmPasswordInput.value;
+                    if (password !== confirmPassword) {
+                        showAuthError("كلمتا المرور غير متطابقتين.");
+                        return;
+                    }
+                    if (password.length < 6) {
+                        showAuthError("كلمة المرور يجب أن تكون 6 أحرف على الأقل.");
+                        return;
+                    }
+
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    // إنشاء ملف المستخدم في Firestore
+                    await createUserProfile(userCredential.user);
+                } else {
+                    // --- تسجيل الدخول ---
+                    await signInWithEmailAndPassword(auth, email, password);
+                }
+                // onAuthStateChanged سيتولى الباقي
+            } catch (error) {
+                console.error("Auth Error:", error.code);
+                showAuthError(getFriendlyAuthError(error.code));
+            } finally {
+                authButton.disabled = false;
+            }
+        }
+
+        async function createUserProfile(user) {
+            const userRef = doc(db, `artifacts/${appId}/users/${user.uid}`);
+            const userProfile = {
+                email: user.email,
+                role: user.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() ? 'admin' : 'guest',
+                createdAt: Timestamp.now()
+            };
+            await setDoc(userRef, userProfile);
+        }
+
+        function showAuthError(message) {
+            authError.textContent = message;
+            authError.classList.remove('hidden');
+        }
+
+        function getFriendlyAuthError(errorCode) {
+            switch (errorCode) {
+                case 'auth/email-already-in-use':
+                    return 'هذا الإيميل مسجل بالفعل. حاول تسجيل الدخول.';
+                case 'auth/invalid-email':
+                    return 'صيغة الإيميل غير صحيحة.';
+                case 'auth/weak-password':
+                    return 'كلمة المرور ضعيفة (6 أحرف على الأقل).';
+                case 'auth/user-not-found':
+                case 'auth/wrong-password':
+                case 'auth/invalid-credential':
+                    return 'الإيميل أو كلمة المرور غير صحيحة.';
+                default:
+                    return 'حدث خطأ. يرجى المحاولة مرة أخرى.';
+            }
+        }
+
+        // --- 7. تهيئة التطبيق الرئيسية ---
+        
         async function initializeAppAndAuth() {
             try {
-                const app = initializeApp(firebaseConfig); 
-                db = getFirestore(app);
+                app = initializeApp(firebaseConfig);
+                analytics = getAnalytics(app);
                 auth = getAuth(app);
-                await enableIndexedDbPersistence(db); 
+                db = getFirestore(app);
 
-                // 2. Listen for auth changes (الأهم)
-                onAuthStateChanged(auth, (user) => {
+                // تفعيل التخزين المحلي (Offline)
+                await enableIndexedDbPersistence(db);
+
+                // مراقبة حالة المصادقة
+                onAuthStateChanged(auth, async (user) => {
                     if (user) {
-                        // المستخدم مسجل دخوله
+                        // المستخدم سجل دخوله
                         userId = user.uid;
-                        userEmailDisplay.innerText = user.email || 'مستخدم';
+                        await fetchUserRole(user.uid);
                         
-                        // جلب بيانات المستخدم (صلاحياته)
-                        listenToUserData(user.uid, user.email);
+                        // تحديث الواجهة
+                        userEmailDisplay.textContent = user.email;
+                        updateRoleDisplay();
                         
                         // إظهار التطبيق وإخفاء شاشة الدخول
                         authScreen.classList.add('hidden');
-                        mainApp.classList.remove('hidden');
-                        appLoading.classList.add('hidden');
+                        appScreen.classList.remove('hidden');
+                        loaderScreen.classList.add('hidden');
 
+                        // تفعيل الواجهة بناءً على الصلاحية
+                        setupUIForRole();
+
+                        // بدء مزامنة البيانات
+                        startDataListeners();
                     } else {
-                        // المستخدم سجل خروج
+                        // المستخدم سجل خروجه
                         userId = null;
                         userRole = 'guest';
                         
-                        // إظهار شاشة الدخول وإخفاء التطبيق
-                        authScreen.classList.remove('hidden');
-                        mainApp.classList.add('hidden');
-                        appLoading.classList.add('hidden');
-                        
-                        // إيقاف جلب البيانات
+                        // إيقاف مزامنة البيانات
                         if (ordersUnsubscribe) ordersUnsubscribe();
                         if (usersUnsubscribe) usersUnsubscribe();
+                        
+                        // إظهار شاشة الدخول وإخفاء التطبيق
+                        authScreen.classList.remove('hidden');
+                        appScreen.classList.add('hidden');
+                        loaderScreen.classList.add('hidden');
                     }
                 });
 
             } catch (error) {
                 console.error("Firebase Initialization Error:", error);
-                appLoading.innerHTML = `<p class="text-xl text-red-600 font-semibold">فشل الاتصال بقاعدة البيانات!</p>`;
-                appContent.classList.add('hidden');
+                loaderScreen.innerHTML = `<p class="text-red-500 font-bold">فشل في تحميل التطبيق. يرجى تحديث الصفحة.</p>`;
             }
         }
 
-        // 2. Listen to User Data (Role)
-        function listenToUserData(uid, email) {
-            const userDocRef = doc(db, "artifacts", appId, "users", uid);
-            
-            getDoc(userDocRef).then(docSnap => {
-                if (docSnap.exists()) {
-                    // المستخدم موجود، نقرأ صلاحياته
-                    userRole = docSnap.data().role || 'guest';
-                    userRoleDisplay.innerText = userRole === 'admin' ? 'أدمن' : 'ضيف';
-                    setupUIForRole();
-                    listenToOrders(); // تحميل الأوردرات بعد معرفة الصلاحية
-                    if (userRole === 'admin') listenToUsers(); // تحميل قايمة المستخدمين لو كان أدمن
-                
-                } else {
-                    // هذا مستخدم جديد، نقوم بإنشاء ملف له
-                    let newUserRole = 'guest';
-                    // التحقق إذا كان هذا هو الأدمن الرئيسي
-                    if (email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) {
-                        newUserRole = 'admin';
-                    }
-                    
-                    setDoc(userDocRef, { 
-                        email: email, 
-                        role: newUserRole,
-                        createdAt: new Date().toISOString()
-                    }).then(() => {
-                        userRole = newUserRole;
-                        userRoleDisplay.innerText = userRole === 'admin' ? 'أدمن' : 'ضيف';
-                        setupUIForRole();
-                        listenToOrders();
-                        if (userRole === 'admin') listenToUsers();
-                    });
-                }
-            });
+        async function fetchUserRole(uid) {
+            const userRef = doc(db, `artifacts/${appId}/users/${uid}`);
+            const docSnap = await getDoc(userRef);
+
+            if (docSnap.exists()) {
+                userRole = docSnap.data().role || 'guest';
+            } else {
+                // حالة نادرة: المستخدم موجود في Auth ولكن ليس له ملف في Firestore
+                // (قد تحدث إذا فشل إنشاء الملف أول مرة)
+                console.warn("User profile not found in Firestore, creating one...");
+                await createUserProfile(auth.currentUser);
+                userRole = auth.currentUser.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() ? 'admin' : 'guest';
+            }
         }
-        
-        // 3. Setup UI based on Role (admin/guest)
+
+        function updateRoleDisplay() {
+            userRoleDisplay.textContent = userRole === 'admin' ? 'أدمن' : 'ضيف';
+            userRoleDisplay.className = `text-xs font-bold px-2 py-0.5 rounded-full ${
+                userRole === 'admin' ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
+            }`;
+            userRoleDisplay.classList.remove('hidden');
+        }
+
         function setupUIForRole() {
             if (userRole === 'admin') {
-                addOrderSection.classList.remove('hidden');
-                adminPanelSection.classList.remove('hidden');
+                adminPanel.classList.remove('hidden');
+                addOrderPanel.classList.remove('hidden');
             } else {
-                addOrderSection.classList.add('hidden');
-                adminPanelSection.classList.add('hidden');
+                adminPanel.classList.add('hidden');
+                addOrderPanel.classList.add('hidden');
             }
-            renderTables(); // إعادة رسم الجداول لتطبيق الصلاحيات (تعطيل الزراير)
+            // إعادة رسم الجداول لتطبيق صلاحيات القراءة/الكتابة (لأزرار الحالة)
+            renderTables(allOrders);
         }
 
-        // 4. Listen for Orders (Team Data)
-        function listenToOrders() {
-            if (ordersUnsubscribe) ordersUnsubscribe(); 
-
-            // البيانات أصبحت في مسار عام للفريق
-            const teamOrdersCollection = collection(db, "artifacts", appId, "teamData", "orders");
-            const q = query(teamOrdersCollection);
-
-            ordersUnsubscribe = onSnapshot(q, (snapshot) => {
-                allOrders = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                })).sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by date
-                
-                renderTables(); 
-                
+        function startDataListeners() {
+            // مزامنة الأوردرات
+            const ordersQuery = query(collection(db, `artifacts/${appId}/orders`));
+            ordersUnsubscribe = onSnapshot(ordersQuery, (querySnapshot) => {
+                allOrders = [];
+                querySnapshot.forEach((doc) => {
+                    allOrders.push({ id: doc.id, ...doc.data() });
+                });
+                renderTables(allOrders);
             }, (error) => {
-                console.error("Error listening to orders: ", error);
+                console.error("Error fetching orders:", error);
+                showAppError("فشل في تحميل سجل الأوردرات.");
             });
-        }
 
-        // 5. Listen for Users (For Admin Panel)
-        function listenToUsers() {
-            if (usersUnsubscribe) usersUnsubscribe();
-            
-            const usersCollection = collection(db, "artifacts", appId, "users");
-            const q = query(usersCollection);
-            
-            usersUnsubscribe = onSnapshot(q, (snapshot) => {
-                allUsers = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                renderUsersPanel();
-            });
-        }
-        
-        // 6. Render Users Panel (Admin only)
-        function renderUsersPanel() {
-            if (userRole !== 'admin') return;
-            usersTbody.innerHTML = '';
-            
-            allUsers.forEach(user => {
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-gray-100 dark:hover:bg-gray-700';
-                
-                const isAdmin = user.role === 'admin';
-                const buttonText = isAdmin ? 'إزالة صلاحية الأدمن' : 'ترقية إلى أدمن';
-                const buttonClass = isAdmin ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-blue-500 hover:bg-blue-600';
-                
-                // منع الأدمن الرئيسي من تعديل صلاحياته
-                const isDisabled = user.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-                const disabledClass = isDisabled ? 'opacity-50 cursor-not-allowed' : '';
-                const disabledAttr = isDisabled ? 'disabled' : '';
-                
-                row.innerHTML = `
-                    <td class="p-3 border-b border-gray-200 dark:border-gray-700">${user.email}</td>
-                    <td class="p-3 border-b border-gray-200 dark:border-gray-700">${user.role}</td>
-                    <td class="p-3 border-b border-gray-200 dark:border-gray-700">
-                        <button 
-                            data-uid="${user.id}" 
-                            data-new-role="${isAdmin ? 'guest' : 'admin'}"
-                            class="toggle-role-btn px-3 py-1 text-white rounded ${buttonClass} ${disabledClass} transition-colors"
-                            ${disabledAttr}>
-                            ${buttonText}
-                        </button>
-                    </td>
-                `;
-                usersTbody.appendChild(row);
-            });
-        }
-
-        // 7. Render Tables (Orders)
-        function renderTables() {
-            const filterDate = filterDateInput.value;
-            const searchTerm = searchInput.value.toLowerCase().trim();
-            
-            let filteredOrders = allOrders;
-
-            if (filterDate) {
-                filteredOrders = filteredOrders.filter(order => order.date === filterDate);
-            }
-
-            if (searchTerm) {
-                filteredOrders = filteredOrders.filter(order => {
-                    const customerMatch = order.customerName && order.customerName.toLowerCase().includes(searchTerm);
-                    const supplierMatch = order.supplierName && order.supplierName.toLowerCase().includes(searchTerm);
-                    const refMatch = order.referenceId && order.referenceId.toLowerCase().includes(searchTerm);
-                    return customerMatch || supplierMatch || refMatch;
+            // مزامنة المستخدمين (للأدمن فقط)
+            if (userRole === 'admin') {
+                const usersQuery = query(collection(db, `artifacts/${appId}/users`));
+                usersUnsubscribe = onSnapshot(usersQuery, (querySnapshot) => {
+                    allUsers = [];
+                    querySnapshot.forEach((doc) => {
+                        allUsers.push({ id: doc.id, ...doc.data() });
+                    });
+                    renderUserList(allUsers);
+                }, (error) => {
+                    console.error("Error fetching users:", error);
+                    showAppError("فشل في تحميل قائمة المستخدمين.");
                 });
             }
+        }
 
-            const receipts = filteredOrders.filter(order => order.type === 'استلام');
-            const expenses = filteredOrders.filter(order => order.type === 'صرف');
+        function showAppError(message) {
+            appErrorMessage.textContent = message;
+            appError.classList.remove('hidden');
+            setTimeout(() => {
+                appError.classList.add('hidden');
+            }, 5000);
+        }
 
-            receiptsTbody.innerHTML = '';
-            expensesTbody.innerHTML = '';
+        // --- 8. وظائف لوحة تحكم الأدمن ---
 
-            noReceiptsMessage.classList.toggle('hidden', receipts.length > 0);
-            noExpensesMessage.classList.toggle('hidden', expenses.length > 0);
-
-            receipts.forEach(order => {
-                const isCompleted = order.status === 'completed';
-                const rowClass = isCompleted ? 'bg-green-100 dark:bg-green-900/30' : 'bg-yellow-100 dark:bg-yellow-900/30';
-                const hoverClass = isCompleted ? 'hover:bg-green-200 dark:hover:bg-green-900/50' : 'hover:bg-yellow-200 dark:hover:bg-yellow-900/50';
-                const statusBtnClass = isCompleted ? 'bg-green-500 text-white' : 'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200';
-                const statusIcon = isCompleted ? '&#10003;' : '&nbsp;';
+        function renderUserList(users) {
+            userListBody.innerHTML = ''; // مسح القائمة القديمة
+            if (users.length === 0) {
+                userListBody.innerHTML = `<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-secondary);">لا يوجد مستخدمين مسجلين.</td></tr>`;
+                return;
+            }
+            
+            users.forEach(user => {
+                // الأدمن الرئيسي لا يمكن تغيير صلاحيته
+                const isSuperAdmin = user.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+                const tr = document.createElement('tr');
+                tr.className = 'table-row';
                 
-                const disabledAttr = userRole === 'admin' ? '' : 'disabled';
-                const disabledClass = userRole === 'admin' ? '' : 'opacity-50 cursor-not-allowed';
-
-                const row = document.createElement('tr');
-                row.className = `transition-colors ${rowClass} ${hoverClass}`;
-                row.innerHTML = `
-                    <td class="p-3 border-b border-gray-200 dark:border-gray-700">${order.type}</td>
-                    <td class="p-3 border-b border-gray-200 dark:border-gray-700">${order.supplierName || '---'}</td>
-                    <td class="p-3 border-b border-gray-200 dark:border-gray-700">${order.referenceId}</td>
-                    <td class="p-3 border-b border-gray-200 dark:border-gray-700">${order.date}</td>
-                    <td class="p-3 border-b border-gray-200 dark:border-gray-700">
-                        <button 
-                            ${disabledAttr} 
-                            data-id="${order.id}" 
-                            data-status="${order.status}"
-                            class="toggle-status-btn w-7 h-7 rounded-md flex items-center justify-center font-bold ${statusBtnClass} ${disabledClass} transition-all">
-                            ${statusIcon}
-                        </button>
+                tr.innerHTML = `
+                    <td class="p-3">${user.email}</td>
+                    <td class="p-3">
+                        <span class="px-2 py-0.5 rounded-full text-xs font-bold ${
+                            user.role === 'admin' ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
+                        }">
+                            ${user.role === 'admin' ? 'أدمن' : 'ضيف'}
+                        </span>
+                    </td>
+                    <td class="p-3">
+                        ${isSuperAdmin ? 
+                            `<span class="text-sm" style="color: var(--text-secondary);">الأدمن الرئيسي</span>` : 
+                            `
+                            <button class="btn-secondary text-xs px-2 py-1 rounded-md ${user.role === 'admin' ? 'hidden' : ''}" data-uid="${user.id}" data-role="admin">ترقية إلى أدمن</button>
+                            <button class="text-xs px-2 py-1 rounded-md bg-red-500 text-white ${user.role === 'guest' ? 'hidden' : ''}" data-uid="${user.id}" data-role="guest">إلغاء صلاحية الأدمن</button>
+                            `
+                        }
                     </td>
                 `;
-                receiptsTbody.appendChild(row);
-            });
-
-            expenses.forEach(order => {
-                const isCompleted = order.status === 'completed';
-                const rowClass = isCompleted ? 'bg-green-100 dark:bg-green-900/30' : 'bg-yellow-100 dark:bg-yellow-900/30';
-                const hoverClass = isCompleted ? 'hover:bg-green-200 dark:hover:bg-green-900/50' : 'hover:bg-yellow-200 dark:hover:bg-yellow-900/50';
-                const statusBtnClass = isCompleted ? 'bg-green-500 text-white' : 'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200';
-                const statusIcon = isCompleted ? '&#10003;' : '&nbsp;';
-
-                const disabledAttr = userRole === 'admin' ? '' : 'disabled';
-                const disabledClass = userRole === 'admin' ? '' : 'opacity-50 cursor-not-allowed';
-
-                const row = document.createElement('tr');
-                row.className = `transition-colors ${rowClass} ${hoverClass}`;
-                row.innerHTML = `
-                    <td class="p-3 border-b border-gray-200 dark:border-gray-700">${order.type}</td>
-                    <td class="p-3 border-b border-gray-200 dark:border-gray-700">${order.customerName || '---'}</td>
-                    <td class="p-3 border-b border-gray-200 dark:border-gray-700">${order.referenceId}</td>
-                    <td class="p-3 border-b border-gray-200 dark:border-gray-700">${order.date}</td>
-                    <td class="p-3 border-b border-gray-200 dark:border-gray-700">
-                        <button 
-                            ${disabledAttr} 
-                            data-id="${order.id}" 
-                            data-status="${order.status}"
-                            class="toggle-status-btn w-7 h-7 rounded-md flex items-center justify-center font-bold ${statusBtnClass} ${disabledClass} transition-all">
-                            ${statusIcon}
-                        </button>
-                    </td>
-                `;
-                expensesTbody.appendChild(row);
+                userListBody.appendChild(tr);
             });
         }
-        
-        // --- Authentication Handlers ---
-        
-        async function handleLogin(e) {
-            e.preventDefault();
-            const email = e.target.email.value;
-            const password = e.target.password.value;
-            loginError.innerText = '';
-            
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-                // onAuthStateChanged will handle the rest
-            } catch (error) {
-                console.error("Login Error:", error.code);
-                loginError.innerText = "فشل تسجيل الدخول. تأكد من الإيميل وكلمة المرور.";
-            }
-        }
-        
-        async function handleRegister(e) {
-            e.preventDefault();
-            const email = e.target.email.value;
-            const password = e.target.password.value;
-            registerError.innerText = '';
-            
-            try {
-                await createUserWithEmailAndPassword(auth, email, password);
-                // onAuthStateChanged will handle the rest
-            } catch (error) {
-                console.error("Register Error:", error.code);
-                registerError.innerText = "فشل إنشاء الحساب. (هل كلمة المرور قوية؟)";
-            }
-        }
-        
-        function handleLogout() {
-            signOut(auth).catch(error => {
-                console.error("Logout Error:", error);
-            });
-        }
-        
-        function toggleAuthForms(e) {
-            e.preventDefault();
-            loginForm.classList.toggle('hidden');
-            registerForm.classList.toggle('hidden');
-            loginError.innerText = '';
-            registerError.innerText = '';
-        }
 
-        // --- Order Handlers (Admin only) ---
-        
-        async function handleAddOrder(e) {
-            e.preventDefault();
-            if (userRole !== 'admin') return alert("ليس لديك صلاحية لإضافة أوردرات.");
-
-            const formData = new FormData(orderForm);
-            const newOrder = {
-                type: formData.get('type'),
-                customerName: formData.get('customer-name') || '',
-                supplierName: formData.get('supplier-name') || '',
-                referenceId: formData.get('reference-id'),
-                date: formData.get('date'),
-                status: 'pending',
-                createdAt: new Date().toISOString(),
-                addedBy: auth.currentUser.email // تتبع من أضاف الأوردر
-            };
-
-            try {
-                const teamOrdersCollection = collection(db, "artifacts", appId, "teamData", "orders");
-                await addDoc(teamOrdersCollection, newOrder);
-                orderForm.reset();
-                toggleFormFields();
-            } catch (error) {
-                console.error("Error adding document: ", error);
-                alert("حدث خطأ أثناء إضافة الأوردر.");
-            }
-        }
-
-        async function handleToggleStatus(e) {
-            if (userRole !== 'admin' || !e.target.classList.contains('toggle-status-btn')) return;
-
-            const btn = e.target;
-            const id = btn.dataset.id;
-            const currentStatus = btn.dataset.status;
-            const newStatus = currentStatus === 'pending' ? 'completed' : 'pending';
+        async function handleRoleChange(e) {
+            if (!e.target.matches('button[data-uid]')) return;
             
-            try {
-                const docRef = doc(db, "artifacts", appId, "teamData", "orders", id);
-                await setDoc(docRef, { status: newStatus }, { merge: true });
-            } catch (error) {
-                console.error("Error updating status: ", error);
-                alert("حدث خطأ أثناء تحديث الحالة.");
-            }
-        }
-        
-        // --- Admin Panel Handlers ---
-        
-        async function handleToggleRole(e) {
-            if (userRole !== 'admin' || !e.target.classList.contains('toggle-role-btn')) return;
-            
-            const btn = e.target;
-            const uidToUpdate = btn.dataset.uid;
-            const newRole = btn.dataset.newRole;
-            
+            const targetUid = e.target.dataset.uid;
+            const newRole = e.target.dataset.role;
+
             if (!confirm(`هل أنت متأكد أنك تريد تغيير صلاحية هذا المستخدم إلى "${newRole}"؟`)) {
                 return;
             }
-            
+
+            const userRef = doc(db, `artifacts/${appId}/users/${targetUid}`);
             try {
-                const userDocRef = doc(db, "artifacts", appId, "users", uidToUpdate);
-                await updateDoc(userDocRef, { role: newRole });
-                // onSnapshot will update the UI
+                await updateDoc(userRef, {
+                    role: newRole
+                });
             } catch (error) {
-                console.error("Error updating role: ", error);
-                alert("حدث خطأ أثناء تغيير الصلاحية.");
+                console.error("Error updating role:", error);
+                showAppError("فشل في تحديث الصلاحية.");
             }
         }
 
-        // --- Utility Functions ---
+
+        // --- 9. وظائف إدارة الأوردرات ---
         
-        function toggleFormFields() {
-            if (typeSelect.value === 'صرف') {
-                customerNameGroup.classList.remove('hidden');
-                supplierNameGroup.classList.add('hidden');
-            } else {
-                customerNameGroup.classList.add('hidden');
-                supplierNameGroup.classList.remove('hidden');
-            }
-        }
+        async function handleAddOrder(e) {
+            e.preventDefault();
+            const type = orderTypeInput.value;
+            const name = orderNameInput.value.trim();
+            const ref = orderRefInput.value.trim();
+            const date = orderDateInput.value;
 
-        function exportToCSV() {
-            if (allOrders.length === 0) {
-                alert("لا توجد بيانات لتصديرها.");
+            if (!name || !ref || !date) {
+                showAppError("يرجى ملء جميع الحقول.");
                 return;
             }
 
-            const headers = "النوع,اسم العميل,اسم المورد,الرقم المرجعي,التاريخ,الحالة\n";
-            const csvContent = allOrders.map(order => {
-                return [
-                    `"${order.type}"`,
-                    `"${order.customerName || ''}"`,
-                    `"${order.supplierName || ''}"`,
-                    `"${order.referenceId}"`,
-                    `"${order.date}"`,
-                    `"${order.status}"`
-                ].join(',');
-            }).join('\n');
+            const newOrder = {
+                type: type,
+                name: name,
+                ref: ref,
+                date: date, // حفظ التاريخ كنص YYYY-MM-DD
+                status: 'pending', // 'pending' or 'completed'
+                addedBy: auth.currentUser.email,
+                createdAt: Timestamp.now()
+            };
 
-            const fullCsv = headers + csvContent;
+            try {
+                const docRef = await addDoc(collection(db, `artifacts/${appId}/orders`), newOrder);
+                addOrderForm.reset();
+                setDefaultDate();
+            } catch (error) {
+                console.error("Error adding order: ", error);
+                showAppError("حدث خطأ أثناء إضافة الأوردر. تأكد من أنك 'أدمن' وأن 'قواعد الأمان' في Firebase محدثة.");
+            }
+        }
+
+        async function handleStatusToggle(e) {
+            if (!e.target.matches('.status-toggle')) return;
+            if (userRole !== 'admin') return; // الضيوف لا يمكنهم التعديل
+
+            const orderId = e.target.dataset.id;
+            const currentStatus = e.target.dataset.status;
+            const newStatus = currentStatus === 'pending' ? 'completed' : 'pending';
+
+            const orderRef = doc(db, `artifacts/${appId}/orders/${orderId}`);
+            try {
+                await updateDoc(orderRef, {
+                    status: newStatus
+                });
+            } catch (error) {
+                console.error("Error updating status:", error);
+                showAppError("فشل في تحديث حالة الأوردر.");
+            }
+        }
+
+        function renderTables(orders) {
+            const filters = getFilters();
+            const filteredOrders = applyFiltersAndSort(orders, filters);
+
+            expensesTableBody.innerHTML = '';
+            incomeTableBody.innerHTML = '';
             
-            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-            const blob = new Blob([bom, fullCsv], { type: 'text/csv;charset=utf-8;' });
+            let expenseCount = 0;
+            let incomeCount = 0;
+            
+            filteredOrders.forEach(order => {
+                const tr = document.createElement('tr');
+                tr.className = `table-row ${order.status === 'pending' ? 'status-pending' : 'status-completed'}`;
+                
+                const statusButton = `
+                    <button 
+                        data-id="${order.id}" 
+                        data-status="${order.status}" 
+                        class="status-toggle px-2 py-0.5 rounded-full text-xs font-bold ${
+                            order.status === 'pending' ? 'bg-yellow-500 text-black' : 'bg-green-500 text-white'
+                        } 
+                        ${userRole !== 'admin' ? 'cursor-not-allowed' : 'hover:opacity-75'}"
+                        ${userRole !== 'admin' ? 'disabled' : ''}
+                    >
+                        ${order.status === 'pending' ? 'معلق' : 'مكتمل'}
+                    </button>
+                `;
+
+                tr.innerHTML = `
+                    <td class="p-3">${order.name}</td>
+                    <td class="p-3">${order.ref}</td>
+                    <td class="p-3">${formatDate(order.date)}</td>
+                    <td class="p-3">${statusButton}</td>
+                `;
+
+                if (order.type === 'expense') {
+                    expensesTableBody.appendChild(tr);
+                    expenseCount++;
+                } else {
+                    incomeTableBody.appendChild(tr);
+                    incomeCount++;
+                }
+            });
+
+            // إظهار رسائل "لا يوجد"
+            noExpensesMsg.style.display = expenseCount === 0 ? 'block' : 'none';
+            noIncomeMsg.style.display = incomeCount === 0 ? 'block' : 'none';
+        }
+
+        // --- 10. وظائف الفلترة والترتيب والتصدير ---
+
+        function getFilters() {
+            return {
+                search: filterSearchInput.value.toLowerCase(),
+                date: filterDateInput.value,
+                sort: filterSortInput.value
+            };
+        }
+
+        function applyFiltersAndSort(orders, filters) {
+            let filtered = orders;
+
+            // الفلترة بالبحث
+            if (filters.search) {
+                filtered = filtered.filter(order => 
+                    order.name.toLowerCase().includes(filters.search) ||
+                    order.ref.toLowerCase().includes(filters.search)
+                );
+            }
+
+            // الفلترة بالتاريخ
+            if (filters.date) {
+                filtered = filtered.filter(order => order.date === filters.date);
+            }
+
+            // الترتيب
+            filtered.sort((a, b) => {
+                switch (filters.sort) {
+                    case 'date-asc':
+                        return new Date(a.date) - new Date(b.date);
+                    case 'name-asc':
+                        return a.name.localeCompare(b.name, 'ar');
+                    case 'name-desc':
+                        return b.name.localeCompare(a.name, 'ar');
+                    case 'ref-asc':
+                        return a.ref.localeCompare(b.ref, 'ar', { numeric: true });
+                    case 'ref-desc':
+                        return b.ref.localeCompare(a.ref, 'ar', { numeric: true });
+                    case 'date-desc':
+                    default:
+                        return new Date(b.date) - new Date(a.date);
+                }
+            });
+            
+            return filtered;
+        }
+
+        function handleFilterChange() {
+            renderTables(allOrders);
+        }
+
+        function clearFilters() {
+            filterSearchInput.value = '';
+            filterDateInput.value = '';
+            filterSortInput.value = 'date-desc';
+            renderTables(allOrders);
+        }
+
+        function exportToCsv() {
+            const filters = getFilters();
+            const dataToExport = applyFiltersAndSort(allOrders, filters);
+            
+            if (dataToExport.length === 0) {
+                alert("لا توجد بيانات لتصديرها بناءً على الفلاتر الحالية.");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // \uFEFF for BOM to support Arabic in Excel
+            csvContent += "النوع,الاسم,الرقم المرجعي,التاريخ,الحالة\n";
+
+            dataToExport.forEach(order => {
+                const type = order.type === 'expense' ? 'صرف' : 'استلام';
+                const status = order.status === 'pending' ? 'معلق' : 'مكتمل';
+                csvContent += `${type},${order.name},${order.ref},${order.date},${status}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            
-            link.setAttribute("href", url);
-            link.setAttribute("download", "orders.csv");
-            link.style.visibility = 'hidden';
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "orders_export.csv");
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
-        
-        // --- Dark Mode Handler ---
-        function setupDarkMode() {
-            const darkModeToggle = document.getElementById('toggle-dark-mode');
-            const sunIcon = document.getElementById('sun-icon');
-            const moonIcon = document.getElementById('moon-icon');
-            
-            // Check local storage
-            if (localStorage.getItem('theme') === 'dark' || 
-               (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                document.documentElement.classList.add('dark');
-                moonIcon.classList.add('hidden');
-                sunIcon.classList.remove('hidden');
-            } else {
-                document.documentElement.classList.remove('dark');
-                moonIcon.classList.remove('hidden');
-                sunIcon.classList.add('hidden');
-            }
 
-            darkModeToggle.addEventListener('click', () => {
-                // toggle theme
-                if (document.documentElement.classList.contains('dark')) {
-                    document.documentElement.classList.remove('dark');
-                    localStorage.setItem('theme', 'light');
-                    moonIcon.classList.remove('hidden');
-                    sunIcon.classList.add('hidden');
-                } else {
-                    document.documentElement.classList.add('dark');
-                    localStorage.setItem('theme', 'dark');
-                    moonIcon.classList.add('hidden');
-                    sunIcon.classList.remove('hidden');
+        // --- 11. وظائف مساعدة ---
+        
+        function setDefaultDate() {
+            // تحديد التاريخ الافتراضي لليوم
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0'); // January is 0!
+            const dd = String(today.getDate()).padStart(2, '0');
+            orderDateInput.value = `${yyyy}-${mm}-${dd}`;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const [year, month, day] = dateString.split('-');
+            return `${day}/${month}/${year}`;
+        }
+
+        // --- 12. بدء تشغيل التطبيق وربط الأحداث ---
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            // تطبيق الثيم (الوضع الليلي) قبل كل شيء
+            applyInitialTheme();
+            
+            // تهيئة التطبيق
+            initializeAppAndAuth();
+            setDefaultDate();
+            
+            // ربط أحداث المصادقة
+            toggleAuthModeLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                toggleAuthMode();
+            });
+            authForm.addEventListener('submit', handleAuthFormSubmit);
+            logoutButton.addEventListener('click', () => {
+                if (confirm("هل أنت متأكد أنك تريد تسجيل الخروج؟")) {
+                    signOut(auth);
                 }
             });
-        }
 
-        // --- Event Listeners ---
-        // Auth
-        loginForm.addEventListener('submit', handleLogin);
-        registerForm.addEventListener('submit', handleRegister);
-        logoutButton.addEventListener('click', handleLogout);
-        showRegisterLink.addEventListener('click', toggleAuthForms);
-        showLoginLink.addEventListener('click', toggleAuthForms);
-        
-        // Orders
-        orderForm.addEventListener('submit', handleAddOrder);
-        typeSelect.addEventListener('change', toggleFormFields);
-        ordersRecordSection.addEventListener('click', handleToggleStatus);
-        
-        // Admin Panel
-        adminPanelSection.addEventListener('click', handleToggleRole);
-        
-        // Filters
-        filterDateInput.addEventListener('change', renderTables);
-        searchInput.addEventListener('input', renderTables);
-        clearFilterBtn.addEventListener('click', () => {
-            filterDateInput.value = '';
-            searchInput.value = '';
-            renderTables();
+            // ربط أحداث الأوردرات
+            addOrderForm.addEventListener('submit', handleAddOrder);
+            expensesTableBody.addEventListener('click', handleStatusToggle);
+            incomeTableBody.addEventListener('click', handleStatusToggle);
+
+            // ربط أحداث لوحة تحكم الأدمن
+            userListBody.addEventListener('click', handleRoleChange);
+
+            // ربط أحداث الفلاتر
+            filterSearchInput.addEventListener('input', handleFilterChange);
+            filterDateInput.addEventListener('change', handleFilterChange);
+            filterSortInput.addEventListener('change', handleFilterChange);
+            clearFiltersButton.addEventListener('click', clearFilters);
+            exportCsvButton.addEventListener('click', exportToCsv);
+            
+            // ربط زر الوضع الليلي
+            darkModeToggle.addEventListener('click', toggleDarkMode);
         });
-        exportCsvBtn.addEventListener('click', exportToCSV);
-
-        // --- Start Application ---
-        initializeAppAndAuth(); // Run the app
-        setupDarkMode(); // Setup dark mode
 
     </script>
-    <style>
-        body {
-            font-family: 'Cairo', sans-serif;
-            @apply bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300;
-        }
-    </style>
-</head>
-<body class="">
-
-    <!-- Full Screen Loading State -->
-    <div id="app-loading" class="fixed inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-900 z-50">
-        <p class="text-2xl text-gray-500 dark:text-gray-400">جاري تحميل التطبيق...</p>
-    </div>
-
-    <!-- Auth Screen (Login/Register) -->
-    <div id="auth-screen" class="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 hidden">
-        <div class="max-w-md w-full p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-            
-            <!-- Login Form -->
-            <form id="login-form" class="">
-                <h2 class="text-3xl font-bold text-center text-indigo-600 dark:text-indigo-400 mb-6">تسجيل الدخول</h2>
-                <div class="space-y-4">
-                    <div>
-                        <label for="login-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">اسم المستخدم (الإيميل)</label>
-                        <input type="email" id="login-email" name="email" required class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label for="login-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">كلمة المرور</label>
-                        <input type="password" id="login-password" name="password" required class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                </div>
-                <p id="login-error" class="text-red-500 text-sm mt-4"></p>
-                <button type="submit" class="w-full mt-6 py-3 px-4 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all">
-                    دخول
-                </button>
-                <p class="text-center mt-4 text-sm">
-                    ليس لديك حساب؟ 
-                    <a href="#" id="show-register" class="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">إنشاء حساب جديد</a>
-                </p>
-            </form>
-            
-            <!-- Register Form -->
-            <form id="register-form" class="hidden">
-                <h2 class="text-3xl font-bold text-center text-indigo-600 dark:text-indigo-400 mb-6">إنشاء حساب جديد</h2>
-                <div class="space-y-4">
-                    <div>
-                        <label for="register-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">اسم المستخدم (الإيميل)</label>
-                        <input type="email" id="register-email" name="email" required class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label for="register-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">كلمة المرور</label>
-                        <input type="password" id="register-password" name="password" required class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                </div>
-                <p id="register-error" class="text-red-500 text-sm mt-4"></p>
-                <button type="submit" class="w-full mt-6 py-3 px-4 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all">
-                    إنشاء حساب
-                </button>
-                <p class="text-center mt-4 text-sm">
-                    لديك حساب بالفعل؟ 
-                    <a href="#" id="show-login" class="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">تسجيل الدخول</a>
-                </p>
-            </form>
-            
-        </div>
-    </div>
-
-    <!-- Main App Content (Hidden by default) -->
-    <div id="main-app" class="container mx-auto p-4 md:p-8 hidden">
-        
-        <header class="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md flex justify-between items-center">
-            <div>
-                <h1 class="text-4xl font-bold text-indigo-700 dark:text-indigo-400">نظام تتبع الأوردرات</h1>
-                <div class="mt-2 text-gray-600 dark:text-gray-300">
-                    مرحباً <span id="user-email" class="font-bold"></span> 
-                    (الصلاحية: <span id="user-role" class="font-bold"></span>)
-                </div>
-            </div>
-            <div class="flex items-center gap-4">
-                <!-- Dark Mode Toggle -->
-                <button id="toggle-dark-mode" class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none">
-                    <!-- Sun Icon -->
-                    <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M12 12a5 5 0 100-10 5 5 0 000 10z" />
-                    </svg>
-                    <!-- Moon Icon -->
-                    <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                </button>
-                <!-- Logout Button -->
-                <button id="logout-button" class="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all">
-                    تسجيل الخروج
-                </button>
-            </div>
-        </header>
-        
-        <!-- Section 1: Admin Panel (Hidden for non-admins) -->
-        <section id="admin-panel-section" class="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md hidden">
-            <h2 class="text-2xl font-semibold mb-6 border-b pb-3 border-gray-200 dark:border-gray-700">لوحة تحكم الأدمن (إدارة الصلاحيات)</h2>
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-max text-right">
-                    <thead class="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-700">
-                        <tr>
-                            <th class="p-4 text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase">المستخدم (الإيميل)</th>
-                            <th class="p-4 text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase">الصلاحية الحالية</th>
-                            <th class="p-4 text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase">تغيير الصلاحية</th>
-                        </tr>
-                    </thead>
-                    <tbody id="users-tbody" class="divide-y divide-gray-200 dark:divide-gray-700">
-                        <!-- Users will be loaded here by JS -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- Section 2: Add New Order Form (Hidden for non-admins) -->
-        <section id="add-order-section" class="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md hidden">
-            <h2 class="text-2xl font-semibold mb-6 border-b pb-3 border-gray-200 dark:border-gray-700">إضافة أوردر جديد</h2>
-            <form id="order-form" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Type -->
-                    <div>
-                        <label for="type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">نوع العملية</label>
-                        <select id="type" name="type" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="صرف">صرف (لعميل)</option>
-                            <option value="استلام">استلام (من مورد)</option>
-                        </select>
-                    </div>
-
-                    <!-- Customer Name (Conditional) -->
-                    <div id="customer-name-group">
-                        <label for="customer-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">اسم العميل</label>
-                        <input type="text" id="customer-name" name="customer-name" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-
-                    <!-- Supplier Name (Conditional) -->
-                    <div id="supplier-name-group" class="hidden">
-                        <label for="supplier-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">اسم المورد</label>
-                        <input type="text" id="supplier-name" name="supplier-name" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-
-                    <!-- Reference ID -->
-                    <div>
-                        <label for="reference-id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">الرقم المرجعي</label>
-                        <input type="text" id="reference-id" name="reference-id" required class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-
-                    <!-- Date -->
-                    <div>
-                        <label for="date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">التاريخ</label>
-                        <input type="date" id="date" name="date" required class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                </div>
-                
-                <div class="text-left pt-4">
-                    <button type="submit" class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all">
-                        إضافة الأوردر
-                    </button>
-                </div>
-            </form>
-        </section>
-
-        <!-- Section 3: Filters and Export -->
-        <section class="mb-6 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-            <div class="flex flex-wrap items-end justify-between gap-4">
-                
-                <h2 class="text-2xl font-semibold basis-full">الفلاتر والبحث</h2>
-
-                <div class="flex flex-wrap items-end gap-4 w-full">
-                    <!-- Search Filter -->
-                    <div class="flex-grow">
-                        <label for="search-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">بحث سريع</label>
-                        <input type="text" id="search-input" placeholder="الاسم أو الرقم المرجعي..." class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-
-                    <!-- Date Filter -->
-                    <div class="flex-grow">
-                        <label for="filter-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">فلترة حسب التاريخ</label>
-                        <input type="date" id="filter-date" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <button id="clear-filter" class="px-4 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
-                        مسح الفلتر
-                    </button>
-                    <button id="export-csv" class="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                        تصدير CSV
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- Section 4: Orders Tables -->
-        <section id="orders-record-section" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- 4.1: Expenses Table (المصروفات) -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                <h3 class="text-xl font-semibold p-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">سجل المصروفات (لعميل)</h3>
-                <div class="overflow-x-auto">
-                    <table class="w-full min-w-max text-right">
-                        <thead class="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-                            <tr>
-                                <th class="p-4 text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase">النوع</th>
-                                <th class="p-4 text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase">العميل</th>
-                                <th class="p-4 text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase">رقم مرجعي</th>
-                                <th class="p-4 text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase">التاريخ</th>
-                                <th class="p-4 text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase">الحالة</th>
-                            </tr>
-                        </thead>
-                        <tbody id="expenses-tbody" class="divide-y divide-gray-200 dark:divide-gray-700">
-                        </tbody>
-                    </table>
-                    <div id="no-expenses-message" class="text-center p-8 text-gray-500 text-lg hidden">
-                        لا توجد مصروفات تطابق معايير البحث.
-                    </div>
-                </div>
-            </div>
-            <!-- 4.2: Receipts Table (الاستلامات) -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                <h3 class="text-xl font-semibold p-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">سجل الاستلامات (من مورد)</h3>
-                <div class="overflow-x-auto">
-                    <table class="w-full min-w-max text-right">
-                        <thead class="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-                            <tr>
-                                <th class="p-4 text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase">النوع</th>
-                                <th class="p-4 text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase">المورد</th>
-                                <th class="p-4 text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase">رقم مرجعي</th>
-                                <th class="p-4 text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase">التاريخ</th>
-                                <th class="p-4 text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase">الحالة</th>
-                            </tr>
-                        </thead>
-                        <tbody id="receipts-tbody" class="divide-y divide-gray-200 dark:divide-gray-700">
-                        </tbody>
-                    </table>
-                    <div id="no-receipts-message" class="text-center p-8 text-gray-500 text-lg hidden">
-                        لا توجد استلامات تطابق معايير البحث.
-                    </div>
-                </div>
-            </div>
-        </section>
-    </div>
 </body>
 </html>
 
