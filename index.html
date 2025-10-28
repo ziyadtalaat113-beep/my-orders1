@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- تحميل مكتبات التصدير (PDF) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <!-- ربط ملف الأنماط (CSS) -->
     <link rel="stylesheet" href="style.css">
     
@@ -180,7 +180,7 @@
                                 <option value="income">استلام (من مورد)</option>
                             </select>
                         </div>
-                        <div class="hidden">
+                        <div class="hidden"> <!-- التاريخ مخفي لأنه يأخذ تاريخ اليوم تلقائياً -->
                             <label for="order-date" class="form-label">التاريخ</label>
                             <input type="date" id="order-date" class="form-input" required>
                         </div>
@@ -194,7 +194,7 @@
                 <!-- (2. الفلاتر والبحث) -->
                 <div class="card mt-6 animate-fade-in" style="animation-delay: 100ms;">
                     <h3 class="card-title">الفلاتر والبحث</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end"> <!-- Changed items-center to items-end -->
                         <div class="md:col-span-2">
                             <label for="filter-search" class="form-label">بحث سريع (بالاسم أو الرقم المرجعي)</label>
                             <input type="text" id="filter-search" class="form-input" placeholder="ابحث...">
@@ -216,9 +216,9 @@
                         </div>
                     </div>
                     <!-- أزرار التحكم -->
-                    <div class="mt-4 flex flex-wrap gap-2" dir="ltr">
+                    <div class="mt-4 flex flex-wrap gap-2 justify-end"> <!-- Changed dir="ltr" to justify-end -->
                         <!-- زرار التصدير (الجديد) -->
-                        <div class="relative inline-block" dir="rtl">
+                        <div class="relative inline-block"> <!-- Removed dir="rtl" -->
                             <button id="export-btn" class="form-btn bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800">
                                 <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                 تصدير
@@ -260,7 +260,7 @@
                         <table class="table-fixed-layout">
                             <thead>
                                 <tr class="table-header">
-                                    <th class="w-12"><input type="checkbox" id="check-all-expense" class="form-checkbox rounded hidden"></th>
+                                    <th class="w-12 text-center"><input type="checkbox" id="check-all-expense" class="form-checkbox rounded hidden"></th> <!-- Center checkbox -->
                                     <th>العميل</th>
                                     <th>الرقم المرجعي</th>
                                     <th>التاريخ</th>
@@ -279,7 +279,7 @@
                         <table class="table-fixed-layout">
                             <thead>
                                 <tr class="table-header">
-                                    <th class="w-12"><input type="checkbox" id="check-all-income" class="form-checkbox rounded hidden"></th>
+                                    <th class="w-12 text-center"><input type="checkbox" id="check-all-income" class="form-checkbox rounded hidden"></th> <!-- Center checkbox -->
                                     <th>المورد</th>
                                     <th>الرقم المرجعي</th>
                                     <th>التاريخ</th>
