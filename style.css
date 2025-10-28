@@ -17,7 +17,7 @@ body {
 
     /* عنوان الكارت */
     .card-title {
-        @apply text-xl font-bold mb-4 text-gray-800 dark:text-white;
+        @apply text-xl font-bold mb-4 text-gray-800 dark:text-white text-right; /* Ensure title aligns right */
     }
     
     /* تنسيق خانات الإدخال */
@@ -51,8 +51,7 @@ body {
         @apply absolute right-3 top-1/2 -translate-y-1/2 mt-px text-gray-400 hover:text-gray-600 dark:hover:text-gray-200;
     }
 
-    /* --- إصلاح تنسيق الجدول --- */
-    /* استايل موحد للجداول */
+    /* --- إصلاح تنسيق الجدول (النهائي) --- */
     .table-styles {
         @apply w-full min-w-[500px]; /* Prevent squeezing on small screens */
     }
@@ -84,49 +83,51 @@ body {
         @apply flex items-center px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-150;
     }
 
-    /* --- إصلاح استايل للجدول في الموبايل (Responsive Tables) --- */
+    /* --- إصلاح استايل للجدول في الموبايل (Responsive Tables - Final) --- */
     @media (max-width: 640px) {
         .table-styles thead {
             @apply hidden; /* Hide header on mobile */
         }
         .table-styles tr {
-            @apply block mb-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm;
+            @apply block mb-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden; /* Add overflow hidden */
         }
         .table-styles td {
-            @apply flex justify-between items-center text-right p-3 border-b dark:border-gray-700; /* Use flex, align right */
+            @apply block w-full text-right p-3 border-b dark:border-gray-700; /* Use block display, align right */
             white-space: normal; /* Allow text wrapping */
         }
         .table-styles td:last-child {
-            @apply border-b-0 justify-center; /* Center status cell content */
+            @apply border-b-0; /* Remove border from last cell */
         }
-        /* إضافة الليبل (العنوان) قبل كل خانة */
+        /* إضافة الليبل (العنوان) قبل كل خانة باستخدام ::before */
         .table-styles td[data-label]::before {
             content: attr(data-label);
-            @apply font-semibold text-gray-600 dark:text-gray-300 ml-4 flex-shrink-0; /* Use margin-left in RTL */
-            /* Removed positioning properties */
+            @apply font-semibold text-gray-600 dark:text-gray-300 ml-4 float-right; /* Float right for RTL */
+            /* Add some margin to the left of the label */
         }
-         /* محتوى الخلية يأخذ باقي المساحة */
+        
+        /* Clear the float for the content if needed, adjust alignment */
         .table-styles td .td-content {
-             @apply text-left flex-grow break-words pl-2; /* Align content left (visually right in RTL flex) */
+            /* Content alignment is handled by td's text-align: right */
+            @apply block overflow-hidden text-ellipsis; /* Allow content to wrap if necessary */
         }
-         /* Special handling for the centered status column label */
-        .table-styles td[data-label="الحالة"] {
-            @apply flex-col items-center; /* Stack label and content vertically */
+        
+        /* Special handling for centered columns (Checkbox and Status) */
+        .table-styles td:first-child,
+        .table-styles td:last-child {
+            @apply text-center; /* Center the cell content */
         }
-        .table-styles td[data-label="الحالة"]::before {
-             @apply mb-1 ml-0; /* Adjust spacing for stacked layout, remove margin */
+        .table-styles td:first-child[data-label]::before,
+        .table-styles td:last-child[data-label]::before {
+            @apply float-none text-center block mb-1; /* Center the label above */
         }
-        .table-styles td[data-label="الحالة"] .td-content {
-             @apply text-center pl-0; /* Center content */
+        .table-styles td:first-child .td-content,
+        .table-styles td:last-child .td-content {
+            @apply text-center block; /* Ensure content is centered */
         }
-         /* Hide checkbox label on mobile */
+        /* Hide checkbox label specifically if needed (though centering might be enough) */
          .table-styles td:first-child[data-label]::before {
-            @apply hidden;
+            /* @apply hidden; */ /* Uncomment if label is still unwanted */
         }
-         .table-styles td:first-child {
-             @apply justify-center; /* Center checkbox */
-         }
-
     }
 }
 
