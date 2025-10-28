@@ -12,7 +12,7 @@ body {
 @layer components {
     /* كارت التصميم الأساسي */
     .card {
-        @apply bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-5 md:p-6 transition-all duration-300;
+        @apply bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-5 md:p-6 transition-colors duration-300; /* Added transition */
     }
 
     /* عنوان الكارت */
@@ -22,7 +22,7 @@ body {
     
     /* تنسيق خانات الإدخال */
     .form-input {
-        @apply w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200;
+        @apply w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200; /* Added transition */
     }
 
     /* تنسيق الليبل (العنوان فوق الخانة) */
@@ -42,7 +42,7 @@ body {
 
     /* تنسيق أزرار الأيقونات (خروج/دارك مود) */
     .icon-btn {
-        @apply p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200 transition-all duration-200;
+        @apply p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-200; /* Added transition */
     }
 
     /* زرار إظهار/إخفاء كلمة المرور */
@@ -52,7 +52,7 @@ body {
 
     /* تنسيق جداول البيانات */
     .table-fixed-layout {
-        @apply w-full min-w-[500px]; /* يمنع الجدول من "الانبعاج" في الشاشات الضيقة */
+        @apply w-full min-w-[500px]; /* Prevent squeezing on small screens */
         table-layout: fixed;
     }
 
@@ -61,7 +61,7 @@ body {
     }
 
     .table-header th {
-        @apply p-3 text-sm font-semibold text-gray-600 dark:text-gray-300 text-right;
+        @apply p-3 text-sm font-semibold text-gray-600 dark:text-gray-300 text-right; /* Align header text right */
     }
     
     .table-body {
@@ -70,6 +70,11 @@ body {
 
     .table-body td {
         @apply p-3 text-sm text-gray-700 dark:text-gray-200 whitespace-nowrap overflow-hidden text-ellipsis;
+        /* Default text alignment (start/right in RTL) */
+    }
+    
+    .table-body td:last-child { /* Center the status column content */
+        @apply text-center;
     }
 
     /* تنسيق خيارات التصدير */
@@ -80,28 +85,28 @@ body {
     /* استايل للجدول في الموبايل (Responsive Tables) */
     @media (max-width: 640px) {
         .table-fixed-layout thead {
-            @apply hidden; /* إخفاء الهيدر */
+            @apply hidden; /* Hide header on mobile */
         }
         .table-fixed-layout tr {
             @apply block mb-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm;
         }
         .table-fixed-layout td {
-            @apply block w-full text-left p-3 border-b dark:border-gray-700;
+            @apply block w-full text-right p-3 border-b dark:border-gray-700; /* Align mobile cell content right */
             white-space: normal;
         }
         .table-fixed-layout td:last-child {
-            @apply border-b-0;
+            @apply border-b-0 text-center; /* Center last cell (status) */
         }
         /* إضافة الليبل (العنوان) قبل كل خانة */
         .table-fixed-layout td[data-label]::before {
             content: attr(data-label);
-            @apply float-right font-semibold text-gray-600 dark:text-gray-300 ml-4;
+            /* Removed float-right, rely on block layout and text-align:right on td */
+            @apply font-semibold text-gray-600 dark:text-gray-300 mr-4; /* Add margin-right */
+            display: inline-block; /* Make it inline block */
         }
-        .table-fixed-layout td[data-label="الحالة"] {
-            @apply text-center;
-        }
+        /* Special handling for the centered status column label */
         .table-fixed-layout td[data-label="الحالة"]::before {
-            @apply float-none; /* الحالة مش محتاجة ليبل يمين وشمال */
+             @apply block text-center mb-1; /* Center label above content */
         }
     }
 }
