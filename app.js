@@ -44,29 +44,33 @@ const firebaseConfig = {
 const appId = "my-order-tracker"; // اسم ثابت للتطبيق (لا تغيره)
 // ----------------------------------------------------
 
-// --- ⭐️ الخطوة 4: وظيفة تحميل الخط العربي (باستخدام خط Noto Naskh) ⭐️ ---
-let notoSansArabicFontBase64 = null; // تخزين الخط بعد تحميله
+// --- ⭐️ الخطوة 4: وظيفة تحميل الخط العربي (باستخدام خط Cairo) ⭐️ ---
+let cairoFontBase64 = null; // تخزين الخط بعد تحميله
 async function loadFontAsBase64(url) {
     try {
-        if (notoSansArabicFontBase64) return notoSansArabicFontBase64; // لو تم تحميله من قبل
+        if (cairoFontBase64) return cairoFontBase64; // لو تم تحميله من قبل
 
         const response = await fetch(url);
-        if (!response.ok) throw new Error('Network response was not ok');
+        if (!response.ok) throw new Error(`Network response was not ok (${response.status})`);
         const blob = await response.blob();
         
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onloadend = () => {
                 const base64data = reader.result.split(',')[1];
-                notoSansArabicFontBase64 = base64data; // تخزين الخط
+                if (!base64data) {
+                     reject(new Error("Failed to read font data as Base64"));
+                     return;
+                 }
+                cairoFontBase64 = base64data; // تخزين الخط
                 resolve(base64data);
             };
-            reader.onerror = reject;
+            reader.onerror = (error) => reject(error); // Pass the error object
             reader.readAsDataURL(blob);
         });
     } catch (error) {
-        console.error('Failed to fetch font:', error);
-        return null;
+        console.error('Failed to fetch or process font:', error);
+        return null; // Return null on error
     }
 }
 // ----------------------------------------------------
@@ -360,7 +364,7 @@ function exportCSV(e) {
     showToast("تم تصدير ملف CSV بنجاح!");
 }
 
-// !!! --- إصلاح الـ PDF (النسخة النهائية) --- !!!
+// !!! --- إصلاح الـ PDF (استخدام خط Cairo) --- !!!
 async function exportPDF(e) { 
     e.preventDefault();
     if(exportDropdown) exportDropdown.classList.add('hidden', 'opacity-0', 'scale-95');
@@ -371,8 +375,8 @@ async function exportPDF(e) {
     }
 
     showToast('جاري تحميل الخطوط لملف الـ PDF...');
-    // استخدام خط جوجل Noto Naskh Arabic (يدعم العربية بشكل ممتاز)
-    const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/notonaskharabic/NotoNaskhArabic-Regular.ttf';
+    // استخدام خط جوجل Cairo Regular (نفس خط الموقع)
+    const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/static/Cairo-Regular.ttf';
     const fontBase64 = await loadFontAsBase64(fontUrl);
     
     if (!fontBase64) {
@@ -388,16 +392,15 @@ async function exportPDF(e) {
         format: 'a4'      // A4 size
     });
     
-    const FONT_NAME = "NotoNaskhArabic"; // اسم الخط كما أضفناه
+    const FONT_NAME = "Cairo"; // اسم الخط كما أضفناه
     
     try {
-        doc.addFileToVFS('NotoNaskhArabic-Regular.ttf', fontBase64);
-        doc.addFont('NotoNaskhArabic-Regular.ttf', FONT_NAME, 'normal');
+        doc.addFileToVFS('Cairo-Regular.ttf', fontBase64);
+        doc.addFont('Cairo-Regular.ttf', FONT_NAME, 'normal');
         doc.setFont(FONT_NAME, 'normal');
     } catch (err) {
         console.error("PDF Font Error:", err);
         showToast("خطأ في إضافة الخط للـ PDF. قد تظهر الحروف غير صحيحة.", true);
-        // لا توقف التنفيذ، سيستخدم الخط الافتراضي
     }
 
     // فصل البيانات
@@ -405,7 +408,6 @@ async function exportPDF(e) {
     const incomeOrders = dataToExport.filter(o => o.type === 'income');
 
     // إعدادات الجدول (محاذاة لليمين، استخدام الخط العربي)
-    // نستخدم النقاط (pt) كوحدات قياس لتكون أدق
     const commonStyles = { font: FONT_NAME, fontStyle: 'normal', cellPadding: 5, fontSize: 10 };
     const headStyles = { ...commonStyles, fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold', halign: 'center' }; // توسيط الهيدر
     const bodyStyles = { ...commonStyles, textColor: [50, 50, 50], halign: 'right' }; // محاذاة النص لليمين
@@ -428,8 +430,6 @@ async function exportPDF(e) {
         doc.setFontSize(10);
         doc.setFont(FONT_NAME, 'normal');
         doc.text(`تاريخ التقرير: ${new Date().toLocaleDateString('ar-EG')}`, pageWidth / 2, pageMargin + 15, { align: 'center' });
-
-        // (يمكن إضافة رقم الصفحة في الفوتر لاحقاً إذا أردت)
     };
 
     let startY = pageMargin + 30; // نقطة بداية أول جدول تحت الهيدر
@@ -442,7 +442,7 @@ async function exportPDF(e) {
         doc.setFontSize(14);
         doc.setFont(FONT_NAME, 'bold');
         doc.text("سجل المصروفات (لعميل)", pageWidth - pageMargin, startY, { align: 'right' });
-        startY += 20; // زيادة المسافة
+        startY += 20;
 
         const expenseBody = expenseOrders.map(o => [
             o.name || 'N/A',
@@ -456,26 +456,27 @@ async function exportPDF(e) {
             head: expenseHead,
             body: expenseBody,
             startY: startY,
-            theme: 'grid', // أو 'striped'
-            styles: bodyStyles, // تطبيق الاستايل الأساسي للخلايا
+            theme: 'grid', 
+            styles: bodyStyles,
             headStyles: headStyles,
             columnStyles: columnStyles,
-            margin: { top: pageMargin + 30, right: pageMargin, bottom: pageMargin, left: pageMargin }, // هوامش مضبوطة
-            didDrawPage: (data) => { // إعادة تطبيق الخط والهيدر/الفوتر لكل صفحة جديدة
-                addHeaderFooter(); // إضافة الهيدر والفوتر
+            margin: { top: startY - 5, right: pageMargin, bottom: pageMargin, left: pageMargin }, // تعديل الهامش العلوي
+            didDrawPage: (data) => {
+                if (data.pageNumber > 1) { // لا تضيف الهيدر للصفحة الأولى مرة أخرى
+                    addHeaderFooter(); 
+                }
                 try { doc.setFont(FONT_NAME, "normal"); } catch(e){} 
             }
         });
-        startY = doc.autoTable.previous.finalY + 20; // مسافة أكبر بين الجداول
+        startY = doc.autoTable.previous.finalY + 20; 
     }
     
     // جدول الاستلامات
     if (incomeOrders.length > 0) {
-         // التأكد من أن الجدول التالي لن يبدأ خارج الصفحة
          if (startY > doc.internal.pageSize.getHeight() - pageMargin * 2) {
             doc.addPage();
-            startY = pageMargin + 30;
-            addHeaderFooter(); // إضافة الهيدر للصفحة الجديدة
+            startY = pageMargin + 30; // إعادة تعيين لصفحة جديدة
+            addHeaderFooter(); 
          }
         
          doc.setFontSize(14);
@@ -499,9 +500,11 @@ async function exportPDF(e) {
             styles: bodyStyles,
             headStyles: headStyles,
             columnStyles: columnStyles,
-            margin: { top: pageMargin + 30, right: pageMargin, bottom: pageMargin, left: pageMargin },
+            margin: { top: startY - 5, right: pageMargin, bottom: pageMargin, left: pageMargin }, // تعديل الهامش العلوي
             didDrawPage: (data) => {
-                 addHeaderFooter();
+                 if (data.pageNumber > 1 || expenseOrders.length === 0) { // أضف الهيدر إذا كانت أول صفحة أو صفحة جديدة
+                     addHeaderFooter();
+                 }
                  try { doc.setFont(FONT_NAME, "normal"); } catch(e){}
             }
          });
@@ -637,12 +640,11 @@ function createOrderRowHtml(order) {
     return `
         <tr id="order-${order.id}" class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors duration-150 ${statusColorClass} ${rowSelectedClass}">
             <td class="p-3 w-12 text-center ${displayCheckboxCol}"><input type="checkbox" data-id="${order.id}" class="order-checkbox form-checkbox rounded border-gray-400 dark:border-gray-600" ${selectedOrders.has(order.id) ? 'checked' : ''}></td>
-            <td class="p-3" data-label="${nameLabel}">${orderName}</td>
-            <td class="p-3" data-label="الرقم المرجعي">${orderRef}</td>
-            <td class="p-3" data-label="التاريخ">${orderDate}</td>
-            <td class="p-3 w-24 text-center" data-label="الحالة">
-                ${statusButtonHtml}
-            </td>
+             {/* -- تعديل للـ CSS الجديد -- */}
+            <td class="p-3" data-label="${nameLabel}"><span class="td-content">${orderName}</span></td>
+            <td class="p-3" data-label="الرقم المرجعي"><span class="td-content">${orderRef}</span></td>
+            <td class="p-3" data-label="التاريخ"><span class="td-content">${orderDate}</span></td>
+            <td class="p-3 w-24 text-center" data-label="الحالة"><span class="td-content">${statusButtonHtml}</span></td> 
         </tr>
     `;
 }
@@ -671,11 +673,9 @@ function renderAdminPanel() {
             </select>`;
         return `
             <tr class="border-b border-gray-200 dark:border-gray-700">
-                <td class="p-3" data-label="الإيميل">${userEmail}</td>
-                <td class="p-3" data-label="الصلاحية">${currentRole}</td>
-                <td class="p-3" data-label="تغيير الصلاحية">
-                    ${roleSelectHtml}
-                </td>
+                <td class="p-3" data-label="الإيميل"><span class="td-content">${userEmail}</span></td>
+                <td class="p-3" data-label="الصلاحية"><span class="td-content">${currentRole}</span></td>
+                <td class="p-3" data-label="تغيير الصلاحية"><span class="td-content">${roleSelectHtml}</span></td>
             </tr>
         `;
     }).join('');
@@ -701,9 +701,7 @@ function updateUIForRole() {
         checkAllIncome
     ].filter(Boolean); 
     const addOrderWrapper = document.getElementById('add-order-form-wrapper');
-
-    // إظهار/إخفاء الأعمدة بناءً على الصلاحية
-    const checkboxHeaders = document.querySelectorAll('th:first-child'); // استهداف الهيدر الأول (للcheckbox)
+    const checkboxHeaders = document.querySelectorAll('th:first-child'); 
 
     if (userRole === 'admin') {
          if (userRoleSpan) {
@@ -712,7 +710,7 @@ function updateUIForRole() {
         }
         if (addOrderWrapper) addOrderWrapper.classList.remove('hidden');
         adminOnlyElements.forEach(el => el.classList.remove('hidden'));
-        checkboxHeaders.forEach(th => th.classList.remove('hidden')); // إظهار هيدر الـ Checkbox
+        checkboxHeaders.forEach(th => th.classList.remove('hidden'));
         listenToAdminUsers(); 
     } else {
         if (userRoleSpan) {
@@ -721,7 +719,7 @@ function updateUIForRole() {
         }
         if (addOrderWrapper) addOrderWrapper.classList.add('hidden');
         adminOnlyElements.forEach(el => el.classList.add('hidden'));
-        checkboxHeaders.forEach(th => th.classList.add('hidden')); // إخفاء هيدر الـ Checkbox
+        checkboxHeaders.forEach(th => th.classList.add('hidden'));
         if (adminPanel) adminPanel.classList.add('hidden');
          if (usersUnsubscribe) { 
              usersUnsubscribe();
@@ -731,7 +729,7 @@ function updateUIForRole() {
         }
     }
     
-    renderTables(); // إعادة الرسم لإخفاء/إظهار خلايا الـ Checkbox
+    renderTables(); 
 }
 
 
@@ -837,9 +835,8 @@ async function handleBulkDelete() {
     });
 }
 
-// (تفعيل الأزرار داخل الجداول)
+// (تفعيل الأزرار داخل الجداول باستخدام event delegation)
 function setupTableInteractions() {
-    // استخدام event delegation لتقليل عدد المستمعين
     const expenseTable = document.getElementById('expense-table-body');
     const incomeTable = document.getElementById('income-table-body');
 
@@ -850,7 +847,7 @@ function setupTableInteractions() {
             const id = statusBtn.dataset.id;
             const status = statusBtn.dataset.status;
             handleToggleStatus(id, status);
-            return; // أوقف التنفيذ هنا
+            return; 
         }
 
         // تحديد Checkbox
@@ -866,10 +863,13 @@ function setupTableInteractions() {
                 row?.classList.remove('bg-blue-100', 'dark:bg-blue-900');
             }
             updateBulkDeleteButton();
-            return; // أوقف التنفيذ هنا
+            return; 
         }
     };
 
+    // Remove previous listeners before adding new ones (safer)
+    expenseTable?.removeEventListener('click', handleTableClick);
+    incomeTable?.removeEventListener('click', handleTableClick);
     expenseTable?.addEventListener('click', handleTableClick);
     incomeTable?.addEventListener('click', handleTableClick);
 }
@@ -949,7 +949,7 @@ function setDefaultDate() {
     if (!orderDate) return;
     try {
         const today = new Date();
-        orderDate.value = today.toISOString().split('T')[0]; // استخدام ISO format لضمان التوافق
+        orderDate.value = today.toISOString().split('T')[0];
     } catch (e) {
         console.error("Error setting default date:", e);
     }
