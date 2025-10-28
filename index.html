@@ -3,319 +3,331 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>متتبع الأوردرات (نظام صلاحيات)</title>
-    
-    <!-- Tailwind CSS -->
+    <title>متتبع الأوردرات</title>
+    <!-- تحميل مكتبة Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Google Font (Cairo) -->
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- مكتبات تصدير PDF -->
+    <!-- تحميل مكتبات التصدير (PDF) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-    
-    <!-- ملف الأنماط الخارجي (بتاعنا) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <!-- ربط ملف الأنماط (CSS) -->
     <link rel="stylesheet" href="style.css">
+    
+    <!-- إعدادات Tailwind للوضع الليلي والخطوط -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // تفعيل الوضع الليلي
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'sans': ['Cairo', 'sans-serif'], // استخدام خط Cairo
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        spin: {
+                            '0%': { transform: 'rotate(0deg)' },
+                            '100%': { transform: 'rotate(360deg)' },
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'spin-slow': 'spin 1.5s linear infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- تحميل خط Cairo من جوجل -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-50 text-gray-900">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300">
 
-    <!-- شاشة التحميل -->
-    <div id="loading-screen" class="fixed inset-0 bg-white dark:bg-gray-900 flex flex-col justify-center items-center z-50">
-        <div id="loader"></div>
-        <p class="mt-4 text-lg text-gray-700 dark:text-gray-300">جاري تحميل التطبيق...</p>
+    <!-- 1. شاشة "جاري تحميل التطبيق..." -->
+    <div id="loading-spinner" class="fixed inset-0 flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 z-50 transition-opacity duration-300">
+        <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin-slow"></div>
+        <p class="mt-4 text-lg font-semibold animate-pulse">جاري تحميل التطبيق...</p>
     </div>
 
-    <!-- شاشة تسجيل الدخول -->
-    <div id="auth-screen" class="hidden min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-md w-full space-y-8">
-            
-            <!-- نموذج تسجيل الدخول -->
-            <div id="login-form-container" class="bg-white dark:bg-gray-800 p-8 shadow-lg rounded-lg transition-all duration-300">
-                <h2 class="text-center text-3xl font-extrabold text-gray-900 dark:text-white mb-6">تسجيل الدخول</h2>
-                <form id="login-form" class="space-y-6" onsubmit="handleLogin(event)">
-                    <div>
-                        <label for="login-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">اسم المستخدم (الإيميل)</label>
-                        <input id="login-email" name="email" type="email" autocomplete="email" required
-                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-300">
-                    </div>
-                    <div class="password-container">
-                        <label for="login-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">كلمة المرور</label>
-                        <input id="login-password" name="password" type="password" autocomplete="current-password" required
-                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-300">
-                        <span class="password-toggle" onclick="togglePasswordVisibility('login-password')">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                        </span>
-                    </div>
-                    <p id="login-error" class="text-red-500 text-sm hidden"></p>
-                    <button type="submit"
-                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300 hover:scale-105">
-                        تسجيل الدخول
-                    </button>
-                </form>
-                <p class="mt-4 text-center text-sm">
-                    ليس لديك حساب؟
-                    <a href="#" id="show-register" class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 transition-all duration-300">
-                        إنشاء حساب جديد
-                    </a>
-                </p>
-            </div>
+    <!-- 2. المحتوى الكامل للتطبيق (مخفي في البداية) -->
+    <div id="app-content" class="opacity-0 transition-opacity duration-500">
 
-            <!-- نموذج إنشاء حساب -->
-            <div id="register-form-container" class="bg-white dark:bg-gray-800 p-8 shadow-lg rounded-lg hidden transition-all duration-300">
-                <h2 class="text-center text-3xl font-extrabold text-gray-900 dark:text-white mb-6">إنشاء حساب جديد</h2>
-                <form id="register-form" class="space-y-6" onsubmit="handleRegister(event)">
-                    <div>
-                        <label for="register-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">اسم المستخدم (الإيميل)</label>
-                        <input id="register-email" name="email" type="email" autocomplete="email" required
-                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-300">
+        <!-- ============================================= -->
+        <!-- == 2أ. شاشة تسجيل الدخول / إنشاء حساب == -->
+        <!-- ============================================= -->
+        <div id="auth-screen" class="hidden min-h-screen flex items-center justify-center p-4">
+            <div class="w-full max-w-md">
+                
+                <!-- نموذج تسجيل الدخول (Default) -->
+                <form id="login-form" class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl animate-fade-in">
+                    <h2 class="text-3xl font-bold text-center text-blue-600 dark:text-blue-400 mb-8">تسجيل الدخول</h2>
+                    
+                    <div class="mb-5">
+                        <label for="login-email" class="block mb-2 text-sm font-medium text-gray-600 dark:text-gray-300">اسم المستخدم (الإيميل)</label>
+                        <input type="email" id="login-email" class="form-input" placeholder="name@example.com" required>
                     </div>
-                    <div class="password-container">
-                        <label for="register-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">كلمة المرور</label>
-                        <input id="register-password" name="password" type="password" autocomplete="new-password" required
-                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-300">
-                        <span class="password-toggle" onclick="togglePasswordVisibility('register-password')">
-                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                        </span>
+
+                    <div class="mb-6 relative">
+                        <label for="login-password" class="block mb-2 text-sm font-medium text-gray-600 dark:text-gray-300">كلمة المرور</label>
+                        <input type="password" id="login-password" class="form-input" placeholder="••••••••" required>
+                        <button type="button" id="login-password-toggle" class="password-toggle-btn">
+                            <!-- أيقونة العين -->
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        </button>
                     </div>
-                    <p id="register-error" class="text-red-500 text-sm hidden"></p>
-                    <button type="submit"
-                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-300 hover:scale-105">
+
+                    <button type="submit" class="form-submit-btn">
+                        دخول
+                    </button>
+
+                    <p class="text-sm text-center text-gray-500 dark:text-gray-400 mt-6">
+                        ليس لديك حساب؟ 
+                        <a href="#" class="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 auth-toggle">إنشاء حساب جديد</a>
+                    </p>
+                </form>
+
+                <!-- نموذج إنشاء حساب (Hidden) -->
+                <form id="register-form" class="hidden bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl animate-fade-in">
+                    <h2 class="text-3xl font-bold text-center text-blue-600 dark:text-blue-400 mb-8">إنشاء حساب جديد</h2>
+                    
+                    <div class="mb-5">
+                        <label for="register-email" class="block mb-2 text-sm font-medium text-gray-600 dark:text-gray-300">اسم المستخدم (الإيميل)</label>
+                        <input type="email" id="register-email" class="form-input" placeholder="name@example.com" required>
+                    </div>
+
+                    <div class="mb-6 relative">
+                        <label for="register-password" class="block mb-2 text-sm font-medium text-gray-600 dark:text-gray-300">كلمة المرور (6 حروف أو أكثر)</label>
+                        <input type="password" id="register-password" class="form-input" placeholder="••••••••" required>
+                        <button type="button" id="register-password-toggle" class="password-toggle-btn">
+                            <!-- أيقونة العين -->
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        </button>
+                    </div>
+
+                    <button type="submit" class="form-submit-btn">
                         إنشاء حساب
                     </button>
+
+                    <p class="text-sm text-center text-gray-500 dark:text-gray-400 mt-6">
+                        لديك حساب بالفعل؟ 
+                        <a href="#" class="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 auth-toggle">تسجيل الدخول</a>
+                    </p>
                 </form>
-                <p class="mt-4 text-center text-sm">
-                    لديك حساب بالفعل؟
-                    <a href="#" id="show-login" class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 transition-all duration-300">
-                        تسجيل الدخول
-                    </a>
-                </p>
-            </div>
 
+            </div>
         </div>
-    </div>
-    
-    <!-- واجهة التطبيق الرئيسية -->
-    <div id="app-screen" class="hidden fade-in">
-        <!-- الهيدر -->
-        <header class="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-40">
-            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-                <h1 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">متتبع الأوردرات</h1>
-                <div class="flex items-center space-x-4">
-                    <!-- Dark Mode Toggle -->
-                    <button id="dark-mode-toggle" class="p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300" aria-label="Toggle Dark Mode">
-                        <!-- Sun Icon (Light Mode) -->
-                        <svg id="sun-icon" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707"></path><circle cx="12" cy="12" r="5"></circle></svg>
-                        <!-- Moon Icon (Dark Mode) -->
-                        <svg id="moon-icon" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-                    </button>
-                    <div id="user-info" class="flex items-center space-x-2">
-                        <span id="user-email" class="text-sm font-medium text-gray-700 dark:text-gray-300"></span>
-                        <span id="user-role-badge" class="px-2 py-0.5 rounded-full text-xs font-semibold transition-all duration-300"></span>
+
+        <!-- ============================================= -->
+        <!-- == 2ب. التطبيق الرئيسي (بعد الدخول) == -->
+        <!-- ============================================= -->
+        <div id="main-app" class="hidden">
+            
+            <!-- (الهيدر) -->
+            <header class="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-30">
+                <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                    <!-- العنوان -->
+                    <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 inline-block -mt-1">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM10.5 15H15m-4.5-3H15m-4.5-3H15m0-3H15m-4.5 0H15" />
+                        </svg>
+                        متتبع الأوردرات
+                    </h1>
+                    
+                    <!-- معلومات المستخدم والأزرار -->
+                    <div class="flex items-center space-x-3" dir="ltr">
+                        <div id="user-info" class="text-right text-sm">
+                            <span id="user-email" class="font-medium text-gray-700 dark:text-gray-200"></span>
+                            <span id="user-role" class="px-2 py-0.5 text-xs bg-gray-200 text-gray-800 rounded-full dark:bg-gray-600 dark:text-gray-100"></span>
+                        </div>
+                        
+                        <button id="admin-panel-btn" class="icon-btn hidden" title="إدارة الصلاحيات">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        </button>
+
+                        <button id="toggle-theme-btn" class="icon-btn" title="تغيير الوضع">
+                            <svg id="sun-icon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                            <svg id="moon-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                        </button>
+                        
+                        <button id="logout-btn" class="icon-btn text-red-500 hover:bg-red-100 dark:hover:bg-red-700 dark:hover:text-white" title="تسجيل الخروج">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        </button>
                     </div>
-                    <button id="logout-btn" class="text-sm text-red-600 dark:text-red-400 hover:underline transition-all duration-300">تسجيل الخروج</button>
                 </div>
-            </div>
-        </header>
+            </header>
 
-        <main class="container mx-auto p-4 md:p-6">
+            <!-- (جسم الصفحة) -->
+            <main class="container mx-auto p-4 md:p-6">
 
-            <!-- لوحة تحكم الأدمن (للأدمن فقط) -->
-            <div id="admin-panel-container" class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg mb-6 admin-only hidden fade-in">
-                <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-white">لوحة تحكم الأدمن (إدارة الصلاحيات)</h2>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead class="bg-gray-50 dark:bg-gray-700">
-                            <tr>
-                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">الإيميل</th>
-                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">الصلاحية الحالية</th>
-                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">تغيير الصلاحية</th>
-                            </tr>
-                        </thead>
-                        <tbody id="users-table-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                            <!-- سيتم ملء المستخدمين هنا -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- إضافة أوردر جديد (للأدمن فقط) -->
-            <div id="add-order-container" class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg mb-6 admin-only hidden fade-in">
-                <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-white">إضافة أوردر جديد</h2>
-                <form id="add-order-form" class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- (1. إضافة أوردر جديد - للأدمن فقط) -->
+                <div id="add-order-form-wrapper" class="hidden animate-fade-in">
+                    <form id="add-order-form" class="card grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                        <div class="md:col-span-2">
+                            <label for="order-name" class="form-label">الاسم (العميل / المورد)</label>
+                            <input type="text" id="order-name" class="form-input" placeholder="اكتب الاسم..." required>
+                        </div>
                         <div>
-                            <label for="order-type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">نوع العملية</label>
-                            <select id="order-type" name="order-type" required
-                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-300">
+                            <label for="order-ref" class="form-label">الرقم المرجعي (اختياري)</label>
+                            <input type="text" id="order-ref" class="form-input" placeholder="00123">
+                        </div>
+                        <div>
+                            <label for="order-type" class="form-label">نوع العملية</label>
+                            <select id="order-type" class="form-input">
                                 <option value="expense">صرف (لعميل)</option>
                                 <option value="income">استلام (من مورد)</option>
                             </select>
                         </div>
-                        <div>
-                            <label for="order-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">التاريخ</label>
-                            <input type="date" id="order-date" name="order-date" required
-                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-300">
+                        <div class="hidden">
+                            <label for="order-date" class="form-label">التاريخ</label>
+                            <input type="date" id="order-date" class="form-input" required>
                         </div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div id="client-field">
-                            <label for="client-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">اسم العميل</label>
-                            <input type="text" id="client-name" name="client-name"
-                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-300"
-                                placeholder="اكتب اسم العميل">
-                        </div>
-                        <div id="supplier-field" class="hidden">
-                            <label for="supplier-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">اسم المورد</label>
-                            <input type="text" id="supplier-name" name="supplier-name"
-                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-300"
-                                placeholder="اكتب اسم المورد">
-                        </div>
-                        <div>
-                            <label for="ref-number" class="block text-sm font-medium text-gray-700 dark:text-gray-300">الرقم المرجعي</label>
-                            <input type="text" id="ref-number" name="ref-number" required
-                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-300"
-                                placeholder="اكتب الرقم المرجعي">
-                        </div>
-                    </div>
-                    <div class="flex justify-end">
-                        <button type="submit"
-                            class="inline-flex justify-center py-2 px-6 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300 hover:scale-105">
+                        <button type="submit" class="form-submit-btn h-10">
+                            <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             إضافة الأوردر
                         </button>
-                    </div>
-                </form>
-            </div>
+                    </form>
+                </div>
 
-            <!-- سجل الأوردرات والفلاتر -->
-            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
-                <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-white">سجل الأوردرات</h2>
-                
-                <!-- الفلاتر وأدوات التحكم -->
-                <div class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                    <!-- البحث -->
-                    <div>
-                        <label for="search-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300">بحث سريع (بالاسم أو الرقم المرجعي)</label>
-                        <input type="text" id="search-input" placeholder="ابحث..."
-                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-300">
+                <!-- (2. الفلاتر والبحث) -->
+                <div class="card mt-6 animate-fade-in" style="animation-delay: 100ms;">
+                    <h3 class="card-title">الفلاتر والبحث</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                        <div class="md:col-span-2">
+                            <label for="filter-search" class="form-label">بحث سريع (بالاسم أو الرقم المرجعي)</label>
+                            <input type="text" id="filter-search" class="form-input" placeholder="ابحث...">
+                        </div>
+                        <div>
+                            <label for="filter-date" class="form-label">فلترة حسب التاريخ</label>
+                            <input type="date" id="filter-date" class="form-input">
+                        </div>
+                        <div>
+                            <label for="filter-sort" class="form-label">ترتيب حسب</label>
+                            <select id="filter-sort" class="form-input">
+                                <option value="date-desc">التاريخ (الأحدث أولاً)</option>
+                                <option value="date-asc">التاريخ (الأقدم أولاً)</option>
+                                <option value="name-asc">الاسم (أ - ي)</option>
+                                <option value="name-desc">الاسم (ي - أ)</option>
+                                <option value="ref-asc">الرقم المرجعي (تصاعدي)</option>
+                                <option value="ref-desc">الرقم المرجعي (تنازلي)</option>
+                            </select>
+                        </div>
                     </div>
-                    
-                    <!-- فلتر التاريخ -->
-                    <div>
-                        <label for="filter-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">فلترة حسب التاريخ</label>
-                        <input type="date" id="filter-date"
-                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-300">
-                    </div>
-
-                    <!-- الترتيب -->
-                    <div>
-                        <label for="sort-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300">ترتيب حسب</label>
-                        <select id="sort-select" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-300">
-                            <option value="date_desc">التاريخ (الأحدث أولاً)</option>
-                            <option value="date_asc">التاريخ (الأقدم أولاً)</option>
-                            <option value="name_asc">الاسم (أ - ي)</option>
-                            <option value="ref_asc">الرقم المرجعي (تصاعدي)</option>
-                        </select>
-                    </div>
-                    
                     <!-- أزرار التحكم -->
-                    <div class="flex space-x-2 space-x-reverse">
-                        <button id="clear-filters"
-                            class="w-full justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300">
-                            مسح الفلتر
-                        </button>
-                        <!-- زرار التصدير الجديد -->
-                        <div class="relative w-full">
-                            <button id="export-menu-btn"
-                                class="w-full justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-300">
-                                تصدير 
-                                <svg class="w-5 h-5 mr-2 -ml-1 inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
+                    <div class="mt-4 flex flex-wrap gap-2" dir="ltr">
+                        <!-- زرار التصدير (الجديد) -->
+                        <div class="relative inline-block" dir="rtl">
+                            <button id="export-btn" class="form-btn bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800">
+                                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                تصدير
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                             </button>
-                            <!-- قايمة التصدير المنسدلة -->
-                            <div id="export-menu" class="hidden absolute left-0 mt-2 w-full rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-50 transform origin-top scale-95 opacity-0">
-                                <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="export-menu-btn">
-                                    <a href="#" id="export-csv-btn" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" role="menuitem">
-                                        تصدير Excel (CSV)
-                                    </a>
-                                    <a href="#" id="export-pdf-btn" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" role="menuitem">
-                                        تصدير PDF (تقرير)
-                                    </a>
-                                </div>
+                            <!-- القائمة المنسدلة -->
+                            <div id="export-dropdown" class="hidden absolute left-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-lg shadow-xl z-20 transition-all duration-150 ease-out origin-top-left opacity-0 scale-95">
+                                <a href="#" id="export-csv-btn" class="export-option">
+                                    <svg class="w-5 h-5 ml-2 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                                    تصدير CSV (لإكسل)
+                                </a>
+                                <a href="#" id="export-pdf-btn" class="export-option">
+                                    <svg class="w-5 h-5 ml-2 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                                    تصدير PDF (تقرير)
+                                </a>
                             </div>
                         </div>
+
+                        <!-- زرار المسح المجمع (للأدمن فقط) -->
+                        <button id="bulk-delete-btn" class="form-btn bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 hidden opacity-0 scale-90 transition-all duration-200">
+                            <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            مسح المحدد 
+                            <span class="mr-1">(0)</span>
+                        </button>
+                        
+                        <button id="clear-filters-btn" class="form-btn bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700">
+                            <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            مسح الفلاتر
+                        </button>
                     </div>
                 </div>
 
-                <!-- زرار المسح المجمع (للأدمن فقط) -->
-                <div id="bulk-delete-container" class="admin-only hidden mb-4 fade-in">
-                    <button id="bulk-delete-btn" disabled
-                        class="w-full md:w-auto justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300">
-                        مسح (0) عناصر محددة
-                    </button>
-                </div>
-                
-                <!-- تقسيم الجداول -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    
-                    <!-- جدول المصروفات (يمين) -->
-                    <div id="expense-table-container">
-                        <h3 class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-100">سجل المصروفات (لعميل)</h3>
-                        <div class="overflow-x-auto shadow rounded-lg">
-                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                <thead class="bg-gray-50 dark:bg-gray-700">
-                                    <tr>
-                                        <th scope="col" class="py-3 px-4 text-right admin-only hidden">
-                                            <input type="checkbox" id="select-all-expense" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:border-gray-600 dark:bg-gray-900 dark:checked:bg-indigo-600 transition-all duration-300">
-                                        </th>
-                                        <th scope="col" class="py-3 px-4 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">الحالة</th>
-                                        <th scope="col" class="py-3 px-4 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">التاريخ</th>
-                                        <th scope="col" class="py-3 px-4 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">العميل</th>
-                                        <th scope="col" class="py-3 px-4 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">الرقم المرجعي</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="expense-table-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                    <!-- سيتم ملء الأوردرات هنا -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <!-- جدول الاستلامات (شمال) -->
-                    <div id="income-table-container">
-                        <h3 class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-100">سجل الاستلامات (من مورد)</h3>
-                        <div class="overflow-x-auto shadow rounded-lg">
-                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                <thead class="bg-gray-50 dark:bg-gray-700">
-                                    <tr>
-                                         <th scope="col" class="py-3 px-4 text-right admin-only hidden">
-                                            <input type="checkbox" id="select-all-income" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:border-gray-600 dark:bg-gray-900 dark:checked:bg-indigo-600 transition-all duration-300">
-                                        </th>
-                                        <th scope="col" class="py-3 px-4 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">الحالة</th>
-                                        <th scope="col" class="py-3 px-4 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">التاريخ</th>
-                                        <th scope="col" class="py-3 px-4 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">المورد</th>
-                                        <th scope="col" class="py-3 px-4 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">الرقم المرجعي</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="income-table-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                    <!-- سيتم ملء الأوردرات هنا -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- رسالة عند عدم وجود بيانات -->
-                <p id="no-data-message" class="text-center text-gray-500 dark:text-gray-400 mt-6 hidden">لا توجد بيانات لعرضها تطابق الفلتر الحالي.</p>
+                <!-- (3. سجل الأوردرات) -->
+                <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in" style="animation-delay: 200ms;">
 
+                    <!-- (سجل المصروفات) -->
+                    <div class="card overflow-x-auto">
+                        <h3 class="card-title">سجل المصروفات (لعميل)</h3>
+                        <table class="table-fixed-layout">
+                            <thead>
+                                <tr class="table-header">
+                                    <th class="w-12"><input type="checkbox" id="check-all-expense" class="form-checkbox rounded hidden"></th>
+                                    <th>العميل</th>
+                                    <th>الرقم المرجعي</th>
+                                    <th>التاريخ</th>
+                                    <th class="w-24 text-center">الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expense-table-body" class="table-body">
+                                <!-- سيتم ملء البيانات هنا -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- (سجل الاستلامات) -->
+                    <div class="card overflow-x-auto">
+                        <h3 class="card-title">سجل الاستلامات (من مورد)</h3>
+                        <table class="table-fixed-layout">
+                            <thead>
+                                <tr class="table-header">
+                                    <th class="w-12"><input type="checkbox" id="check-all-income" class="form-checkbox rounded hidden"></th>
+                                    <th>المورد</th>
+                                    <th>الرقم المرجعي</th>
+                                    <th>التاريخ</th>
+                                    <th class="w-24 text-center">الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody id="income-table-body" class="table-body">
+                                <!-- سيتم ملء البيانات هنا -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </main>
+
+            <!-- (4. لوحة تحكم الأدمن - نافذة منبثقة) -->
+            <div id="admin-panel" class="hidden fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-40 p-4 transition-opacity duration-300">
+                <div class="card w-full max-w-2xl animate-fade-in">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="card-title mb-0">إدارة صلاحيات المستخدمين</h3>
+                        <button id="close-admin-panel-btn" class="icon-btn">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <div class="overflow-y-auto max-h-[60vh]">
+                        <table class="table-fixed-layout">
+                            <thead>
+                                <tr class="table-header">
+                                    <th>الإيميل</th>
+                                    <th>الصلاحية الحالية</th>
+                                    <th>تغيير الصلاحية</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body" class="table-body">
+                                <!-- سيتم ملء المستخدمين هنا -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
-        </main>
-    </div>
+        </div> <!-- (نهاية التطبيق الرئيسي) -->
+    </div> <!-- (نهاية المحتوى الكامل) -->
 
-    <!-- ملف الجافاسكريبت الخارجي (بتاعنا) -->
-    <!-- type="module" مهم جداً -->
+    <!-- ============================================= -->
+    <!-- == ربط ملف الجافاسكريبت (الأهم) == -->
+    <!-- (نوع "module" يضمن تحميله بعد الـ HTML) -->
+    <!-- ============================================= -->
     <script type="module" src="app.js"></script>
     
 </body>
