@@ -66,12 +66,12 @@
                     <h2 class="text-3xl font-bold text-center text-blue-600 dark:text-blue-400 mb-8">تسجيل الدخول</h2>
                     
                     <div class="mb-5">
-                        <label for="login-email" class="block mb-2 text-sm font-medium text-gray-600 dark:text-gray-300">اسم المستخدم (الإيميل)</label>
+                        <label for="login-email" class="form-label">اسم المستخدم (الإيميل)</label>
                         <input type="email" id="login-email" class="form-input" placeholder="name@example.com" required>
                     </div>
 
                     <div class="mb-6 relative">
-                        <label for="login-password" class="block mb-2 text-sm font-medium text-gray-600 dark:text-gray-300">كلمة المرور</label>
+                        <label for="login-password" class="form-label">كلمة المرور</label>
                         <input type="password" id="login-password" class="form-input" placeholder="••••••••" required>
                         <button type="button" id="login-password-toggle" class="password-toggle-btn">
                             <!-- أيقونة العين -->
@@ -94,12 +94,12 @@
                     <h2 class="text-3xl font-bold text-center text-blue-600 dark:text-blue-400 mb-8">إنشاء حساب جديد</h2>
                     
                     <div class="mb-5">
-                        <label for="register-email" class="block mb-2 text-sm font-medium text-gray-600 dark:text-gray-300">اسم المستخدم (الإيميل)</label>
+                        <label for="register-email" class="form-label">اسم المستخدم (الإيميل)</label>
                         <input type="email" id="register-email" class="form-input" placeholder="name@example.com" required>
                     </div>
 
                     <div class="mb-6 relative">
-                        <label for="register-password" class="block mb-2 text-sm font-medium text-gray-600 dark:text-gray-300">كلمة المرور (6 حروف أو أكثر)</label>
+                        <label for="register-password" class="form-label">كلمة المرور (6 حروف أو أكثر)</label>
                         <input type="password" id="register-password" class="form-input" placeholder="••••••••" required>
                         <button type="button" id="register-password-toggle" class="password-toggle-btn">
                             <!-- أيقونة العين -->
@@ -180,7 +180,7 @@
                                 <option value="income">استلام (من مورد)</option>
                             </select>
                         </div>
-                        <div class="hidden"> <!-- التاريخ مخفي لأنه يأخذ تاريخ اليوم تلقائياً -->
+                        <div class="hidden"> <!-- التاريخ مخفي -->
                             <label for="order-date" class="form-label">التاريخ</label>
                             <input type="date" id="order-date" class="form-input" required>
                         </div>
@@ -194,7 +194,7 @@
                 <!-- (2. الفلاتر والبحث) -->
                 <div class="card mt-6 animate-fade-in" style="animation-delay: 100ms;">
                     <h3 class="card-title">الفلاتر والبحث</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end"> <!-- Changed items-center to items-end -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                         <div class="md:col-span-2">
                             <label for="filter-search" class="form-label">بحث سريع (بالاسم أو الرقم المرجعي)</label>
                             <input type="text" id="filter-search" class="form-input" placeholder="ابحث...">
@@ -216,16 +216,16 @@
                         </div>
                     </div>
                     <!-- أزرار التحكم -->
-                    <div class="mt-4 flex flex-wrap gap-2 justify-end"> <!-- Changed dir="ltr" to justify-end -->
+                    <div class="mt-4 flex flex-wrap gap-2 justify-start"> <!-- Use justify-start for RTL -->
                         <!-- زرار التصدير (الجديد) -->
-                        <div class="relative inline-block"> <!-- Removed dir="rtl" -->
+                        <div class="relative inline-block">
                             <button id="export-btn" class="form-btn bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800">
                                 <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                 تصدير
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                             </button>
                             <!-- القائمة المنسدلة -->
-                            <div id="export-dropdown" class="hidden absolute left-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-lg shadow-xl z-20 transition-all duration-150 ease-out origin-top-left opacity-0 scale-95">
+                            <div id="export-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-lg shadow-xl z-20 transition-all duration-150 ease-out origin-top-right opacity-0 scale-95"> <!-- Changed left-0 to right-0 -->
                                 <a href="#" id="export-csv-btn" class="export-option">
                                     <svg class="w-5 h-5 ml-2 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                                     تصدير CSV (لإكسل)
@@ -257,10 +257,10 @@
                     <!-- (سجل المصروفات) -->
                     <div class="card overflow-x-auto">
                         <h3 class="card-title">سجل المصروفات (لعميل)</h3>
-                        <table class="table-fixed-layout">
+                        <table class="table-styles"> <!-- Use the new class -->
                             <thead>
                                 <tr class="table-header">
-                                    <th class="w-12 text-center"><input type="checkbox" id="check-all-expense" class="form-checkbox rounded hidden"></th> <!-- Center checkbox -->
+                                    <th class="w-12 text-center hidden"><input type="checkbox" id="check-all-expense" class="form-checkbox rounded"></th> <!-- Hidden by default, shown for admin by JS -->
                                     <th>العميل</th>
                                     <th>الرقم المرجعي</th>
                                     <th>التاريخ</th>
@@ -276,10 +276,10 @@
                     <!-- (سجل الاستلامات) -->
                     <div class="card overflow-x-auto">
                         <h3 class="card-title">سجل الاستلامات (من مورد)</h3>
-                        <table class="table-fixed-layout">
+                        <table class="table-styles"> <!-- Use the new class -->
                             <thead>
                                 <tr class="table-header">
-                                    <th class="w-12 text-center"><input type="checkbox" id="check-all-income" class="form-checkbox rounded hidden"></th> <!-- Center checkbox -->
+                                    <th class="w-12 text-center hidden"><input type="checkbox" id="check-all-income" class="form-checkbox rounded"></th> <!-- Hidden by default, shown for admin by JS -->
                                     <th>المورد</th>
                                     <th>الرقم المرجعي</th>
                                     <th>التاريخ</th>
@@ -305,7 +305,7 @@
                         </button>
                     </div>
                     <div class="overflow-y-auto max-h-[60vh]">
-                        <table class="table-fixed-layout">
+                        <table class="table-styles w-full"> <!-- Use the new class and ensure full width -->
                             <thead>
                                 <tr class="table-header">
                                     <th>الإيميل</th>
@@ -326,7 +326,6 @@
 
     <!-- ============================================= -->
     <!-- == ربط ملف الجافاسكريبت (الأهم) == -->
-    <!-- (نوع "module" يضمن تحميله بعد الـ HTML) -->
     <!-- ============================================= -->
     <script type="module" src="app.js"></script>
     
