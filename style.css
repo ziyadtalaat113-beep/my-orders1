@@ -12,7 +12,7 @@ body {
 @layer components {
     /* كارت التصميم الأساسي */
     .card {
-        @apply bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-5 md:p-6 transition-colors duration-300; /* Added transition */
+        @apply bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-5 md:p-6 transition-colors duration-300;
     }
 
     /* عنوان الكارت */
@@ -22,12 +22,12 @@ body {
     
     /* تنسيق خانات الإدخال */
     .form-input {
-        @apply w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200; /* Added transition */
+        @apply w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200;
     }
 
     /* تنسيق الليبل (العنوان فوق الخانة) */
     .form-label {
-        @apply block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1;
+        @apply block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1 text-right; /* Ensure labels are right-aligned */
     }
 
     /* تنسيق زرار التأكيد (دخول/إضافة) */
@@ -42,18 +42,19 @@ body {
 
     /* تنسيق أزرار الأيقونات (خروج/دارك مود) */
     .icon-btn {
-        @apply p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-200; /* Added transition */
+        @apply p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-200;
     }
 
     /* زرار إظهار/إخفاء كلمة المرور */
     .password-toggle-btn {
-        @apply absolute left-3 top-1/2 -translate-y-1/2 mt-px text-gray-400 hover:text-gray-600 dark:hover:text-gray-200;
+        /* Adjusted for RTL: position right */
+        @apply absolute right-3 top-1/2 -translate-y-1/2 mt-px text-gray-400 hover:text-gray-600 dark:hover:text-gray-200;
     }
 
-    /* تنسيق جداول البيانات */
-    .table-fixed-layout {
+    /* --- إصلاح تنسيق الجدول --- */
+    /* استايل موحد للجداول */
+    .table-styles {
         @apply w-full min-w-[500px]; /* Prevent squeezing on small screens */
-        table-layout: fixed;
     }
 
     .table-header {
@@ -69,11 +70,12 @@ body {
     }
 
     .table-body td {
-        @apply p-3 text-sm text-gray-700 dark:text-gray-200 whitespace-nowrap overflow-hidden text-ellipsis;
-        /* Default text alignment (start/right in RTL) */
+        @apply p-3 text-sm text-gray-700 dark:text-gray-200 whitespace-nowrap overflow-hidden text-ellipsis text-right; /* Default text alignment right for RTL */
     }
     
-    .table-body td:last-child { /* Center the status column content */
+    /* Center status and checkbox column content */
+    .table-body td:last-child, .table-header th:last-child, 
+    .table-body td:first-child, .table-header th:first-child { 
         @apply text-center;
     }
 
@@ -82,32 +84,49 @@ body {
         @apply flex items-center px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-150;
     }
 
-    /* استايل للجدول في الموبايل (Responsive Tables) */
+    /* --- إصلاح استايل للجدول في الموبايل (Responsive Tables) --- */
     @media (max-width: 640px) {
-        .table-fixed-layout thead {
+        .table-styles thead {
             @apply hidden; /* Hide header on mobile */
         }
-        .table-fixed-layout tr {
+        .table-styles tr {
             @apply block mb-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm;
         }
-        .table-fixed-layout td {
-            @apply block w-full text-right p-3 border-b dark:border-gray-700; /* Align mobile cell content right */
-            white-space: normal;
+        .table-styles td {
+            @apply flex justify-between items-center text-right p-3 border-b dark:border-gray-700; /* Use flex, align right */
+            white-space: normal; /* Allow text wrapping */
         }
-        .table-fixed-layout td:last-child {
-            @apply border-b-0 text-center; /* Center last cell (status) */
+        .table-styles td:last-child {
+            @apply border-b-0 justify-center; /* Center status cell content */
         }
         /* إضافة الليبل (العنوان) قبل كل خانة */
-        .table-fixed-layout td[data-label]::before {
+        .table-styles td[data-label]::before {
             content: attr(data-label);
-            /* Removed float-right, rely on block layout and text-align:right on td */
-            @apply font-semibold text-gray-600 dark:text-gray-300 mr-4; /* Add margin-right */
-            display: inline-block; /* Make it inline block */
+            @apply font-semibold text-gray-600 dark:text-gray-300 ml-4 flex-shrink-0; /* Use margin-left in RTL */
+            /* Removed positioning properties */
         }
-        /* Special handling for the centered status column label */
-        .table-fixed-layout td[data-label="الحالة"]::before {
-             @apply block text-center mb-1; /* Center label above content */
+         /* محتوى الخلية يأخذ باقي المساحة */
+        .table-styles td .td-content {
+             @apply text-left flex-grow break-words pl-2; /* Align content left (visually right in RTL flex) */
         }
+         /* Special handling for the centered status column label */
+        .table-styles td[data-label="الحالة"] {
+            @apply flex-col items-center; /* Stack label and content vertically */
+        }
+        .table-styles td[data-label="الحالة"]::before {
+             @apply mb-1 ml-0; /* Adjust spacing for stacked layout, remove margin */
+        }
+        .table-styles td[data-label="الحالة"] .td-content {
+             @apply text-center pl-0; /* Center content */
+        }
+         /* Hide checkbox label on mobile */
+         .table-styles td:first-child[data-label]::before {
+            @apply hidden;
+        }
+         .table-styles td:first-child {
+             @apply justify-center; /* Center checkbox */
+         }
+
     }
 }
 
