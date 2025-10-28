@@ -1,133 +1,123 @@
-/* إعدادات الخط الأساسية وتنسيق الصفحة */
-body {
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
-
-/* تنسيقات مخصصة (Components) لـ Tailwind */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer components {
-    /* كارت التصميم الأساسي */
-    .card {
-        @apply bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-5 md:p-6 transition-colors duration-300;
-    }
-
-    /* عنوان الكارت */
-    .card-title {
-        @apply text-xl font-bold mb-4 text-gray-800 dark:text-white text-right; /* Ensure title aligns right */
+    /* إعدادات الخط الأساسية وتنسيق الصفحة */
+    body {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }
     
-    /* تنسيق خانات الإدخال */
-    .form-input {
-        @apply w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200;
-    }
-
-    /* تنسيق الليبل (العنوان فوق الخانة) */
-    .form-label {
-        @apply block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1 text-right; /* Ensure labels are right-aligned */
-    }
-
-    /* تنسيق زرار التأكيد (دخول/إضافة) */
-    .form-submit-btn {
-        @apply w-full h-11 px-5 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 transition-all duration-200 ease-in-out transform active:scale-95 flex items-center justify-center;
-    }
-
-    /* تنسيق الأزرار العادية (مسح/تصدير) */
-    .form-btn {
-        @apply px-4 py-2 text-sm font-medium text-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900 focus:ring-opacity-75 transition-all duration-200 ease-in-out transform active:scale-95 flex items-center;
-    }
-
-    /* تنسيق أزرار الأيقونات (خروج/دارك مود) */
-    .icon-btn {
-        @apply p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-200;
-    }
-
-    /* زرار إظهار/إخفاء كلمة المرور */
-    .password-toggle-btn {
-        /* Adjusted for RTL: position right */
-        @apply absolute right-3 top-1/2 -translate-y-1/2 mt-px text-gray-400 hover:text-gray-600 dark:hover:text-gray-200;
-    }
-
-    /* --- إصلاح تنسيق الجدول (النهائي) --- */
-    .table-styles {
-        @apply w-full min-w-[500px]; /* Prevent squeezing on small screens */
-    }
-
-    .table-header {
-        @apply bg-gray-50 dark:bg-gray-750 border-b border-gray-200 dark:border-gray-700;
-    }
-
-    .table-header th {
-        @apply p-3 text-sm font-semibold text-gray-600 dark:text-gray-300 text-right; /* Align header text right */
-    }
+    /* تنسيقات مخصصة (Components) لـ Tailwind */
+    @tailwind base;
+    @tailwind components;
+    @tailwind utilities;
     
-    .table-body {
-        @apply divide-y divide-gray-200 dark:divide-gray-700;
-    }
-
-    .table-body td {
-        @apply p-3 text-sm text-gray-700 dark:text-gray-200 whitespace-nowrap overflow-hidden text-ellipsis text-right; /* Default text alignment right for RTL */
-    }
+    @layer components {
+        /* كارت التصميم الأساسي */
+        .card {
+            @apply bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-5 md:p-6 transition-colors duration-300;
+        }
     
-    /* Center status and checkbox column content */
-    .table-body td:last-child, .table-header th:last-child, 
-    .table-body td:first-child, .table-header th:first-child { 
-        @apply text-center;
-    }
-
-    /* تنسيق خيارات التصدير */
-    .export-option {
-        @apply flex items-center px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-150;
-    }
-
-    /* --- إصلاح استايل للجدول في الموبايل (Responsive Tables - Final) --- */
-    @media (max-width: 640px) {
-        .table-styles thead {
-            @apply hidden; /* Hide header on mobile */
-        }
-        .table-styles tr {
-            @apply block mb-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden; /* Add overflow hidden */
-        }
-        .table-styles td {
-            @apply block w-full text-right p-3 border-b dark:border-gray-700; /* Use block display, align right */
-            white-space: normal; /* Allow text wrapping */
-        }
-        .table-styles td:last-child {
-            @apply border-b-0; /* Remove border from last cell */
-        }
-        /* إضافة الليبل (العنوان) قبل كل خانة باستخدام ::before */
-        .table-styles td[data-label]::before {
-            content: attr(data-label);
-            @apply font-semibold text-gray-600 dark:text-gray-300 ml-4 float-right; /* Float right for RTL */
-            /* Add some margin to the left of the label */
+        /* عنوان الكارت */
+        .card-title {
+            @apply text-xl font-bold mb-4 text-gray-800 dark:text-white text-right; /* Ensure title aligns right */
         }
         
-        /* Clear the float for the content if needed, adjust alignment */
-        .table-styles td .td-content {
-            /* Content alignment is handled by td's text-align: right */
-            @apply block overflow-hidden text-ellipsis; /* Allow content to wrap if necessary */
+        /* تنسيق خانات الإدخال */
+        .form-input {
+            @apply w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200;
+        }
+    
+        /* تنسيق الليبل (العنوان فوق الخانة) */
+        .form-label {
+            @apply block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1 text-right; /* Ensure labels are right-aligned */
+        }
+    
+        /* تنسيق زرار التأكيد (دخول/إضافة) */
+        .form-submit-btn {
+            @apply w-full h-11 px-5 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 transition-all duration-200 ease-in-out transform active:scale-95 flex items-center justify-center;
+        }
+    
+        /* تنسيق الأزرار العادية (مسح/تصدير) */
+        .form-btn {
+            @apply px-4 py-2 text-sm font-medium text-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900 focus:ring-opacity-75 transition-all duration-200 ease-in-out transform active:scale-95 flex items-center;
+        }
+    
+        /* تنسيق أزرار الأيقونات (خروج/دارك مود) */
+        .icon-btn {
+            @apply p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-200;
+        }
+    
+        /* زرار إظهار/إخفاء كلمة المرور */
+        .password-toggle-btn {
+            /* Adjusted for RTL: position right */
+            @apply absolute right-3 top-1/2 -translate-y-1/2 mt-px text-gray-400 hover:text-gray-600 dark:hover:text-gray-200;
+        }
+    
+        /* --- إصلاح تنسيق الجدول (النهائي) --- */
+        .table-styles {
+            @apply w-full min-w-[500px]; /* Prevent squeezing on small screens */
+        }
+    
+        .table-header {
+            @apply bg-gray-50 dark:bg-gray-750 border-b border-gray-200 dark:border-gray-700;
+        }
+    
+        .table-header th {
+            @apply p-3 text-sm font-semibold text-gray-600 dark:text-gray-300 text-right; /* Align header text right */
         }
         
-        /* Special handling for centered columns (Checkbox and Status) */
-        .table-styles td:first-child,
-        .table-styles td:last-child {
-            @apply text-center; /* Center the cell content */
+        .table-body {
+            @apply divide-y divide-gray-200 dark:divide-gray-700;
         }
-        .table-styles td:first-child[data-label]::before,
-        .table-styles td:last-child[data-label]::before {
-            @apply float-none text-center block mb-1; /* Center the label above */
+    
+        .table-body td {
+            @apply p-3 text-sm text-gray-700 dark:text-gray-200 whitespace-nowrap overflow-hidden text-ellipsis text-right; /* Default text alignment right for RTL */
         }
-        .table-styles td:first-child .td-content,
-        .table-styles td:last-child .td-content {
-            @apply text-center block; /* Ensure content is centered */
+        
+        /* Center status and checkbox column content */
+        .table-body td:last-child, .table-header th:last-child, 
+        .table-body td:first-child, .table-header th:first-child { 
+            @apply text-center;
         }
-        /* Hide checkbox label specifically if needed (though centering might be enough) */
-         .table-styles td:first-child[data-label]::before {
-            /* @apply hidden; */ /* Uncomment if label is still unwanted */
+    
+        /* تنسيق خيارات التصدير */
+        .export-option {
+            @apply flex items-center px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-150;
+        }
+    
+        /* --- إصلاح استايل للجدول في الموبايل (Responsive Tables - Final) --- */
+        @media (max-width: 640px) {
+            .table-styles thead {
+                @apply hidden; /* Hide header on mobile */
+            }
+            .table-styles tr {
+                @apply block mb-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden; /* Add overflow hidden */
+            }
+            .table-styles td {
+                @apply block w-full text-right p-3 border-b dark:border-gray-700; /* Use block display, align right */
+                white-space: normal; /* Allow text wrapping */
+            }
+            .table-styles td:last-child {
+                @apply border-b-0; /* Remove border from last cell */
+            }
+            /* إضافة الليبل (العنوان) قبل كل خانة باستخدام ::before */
+            .table-styles td[data-label]::before {
+                content: attr(data-label);
+                @apply font-semibold text-gray-600 dark:text-gray-300 ml-4 float-right; /* Float right for RTL */
+            }
+            
+            /* Special handling for centered columns (Checkbox and Status) */
+            .table-styles td:first-child,
+            .table-styles td:last-child {
+                @apply text-center; /* Center the cell content */
+            }
+            .table-styles td:first-child[data-label]::before,
+            .table-styles td:last-child[data-label]::before {
+                @apply float-none text-center block mb-1; /* Center the label above */
+            }
+             /* Hide checkbox label specifically */
+             .table-styles td:first-child[data-label]::before {
+                 @apply hidden; 
+            }
         }
     }
-}
+    
 
