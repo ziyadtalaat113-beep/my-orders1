@@ -96,7 +96,7 @@ let loadingSpinner, appContent, authScreen, mainApp,
 
 
 // --- 7. تشغيل التطبيق بعد تحميل الصفحة ---
-// (!!! هذا هو الإصلاح !!!)
+// (!!! هذا هو الإصلاح لمشكلة "جاري التحميل" !!!)
 document.addEventListener('DOMContentLoaded', () => {
     
     // --- الخطوة 7أ: ربط كل العناصر الآن ---
@@ -201,7 +201,7 @@ async function initializeAppAndAuth() {
 
 // إظهار شاشة الدخول وإخفاء التحميل
 function showAuthScreen() {
-    if (authScreen) authScreen.classList.remove('hidden');
+    if (authScreen) authScreen.classList.add('hidden');
     if (mainApp) mainApp.classList.add('hidden');
     hideLoadingSpinner();
 }
@@ -307,15 +307,18 @@ function setupEventListeners() {
     toggleThemeBtn.addEventListener('click', toggleTheme);
     
     // (التصدير)
-    exportBtn.addEventListener('click', () => {
+    exportBtn.addEventListener('click', (e) => {
+        e.preventDefault();
         exportDropdown.classList.toggle('hidden');
+        exportDropdown.classList.toggle('opacity-0', exportDropdown.classList.contains('hidden'));
+        exportDropdown.classList.toggle('scale-95', exportDropdown.classList.contains('hidden'));
     });
     exportCsvBtn.addEventListener('click', exportCSV);
     exportPdfBtn.addEventListener('click', exportPDF);
     // إخفاء القائمة عند الضغط خارجها
     document.addEventListener('click', (e) => {
         if (!exportBtn.contains(e.target) && !exportDropdown.contains(e.target)) {
-            exportDropdown.classList.add('hidden');
+            exportDropdown.classList.add('hidden', 'opacity-0', 'scale-95');
         }
     });
 
@@ -334,12 +337,6 @@ function setupEventListeners() {
 
 
 // --- 10. وظائف مساعدة (التصدير) ---
-
-// إظهار وإخفاء قايمة التصدير
-exportBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    exportDropdown.classList.toggle('hidden', 'opacity-0', 'scale-95');
-});
 
 // تصدير CSV
 function exportCSV(e) {
@@ -376,7 +373,7 @@ function exportCSV(e) {
 }
 
 // تصدير PDF (تقرير)
-exportPdfBtn.addEventListener('click', async (e) => { // <-- 1. أضفنا async
+async function exportPDF(e) { // <-- 1. أضفنا async
     e.preventDefault();
     exportDropdown.classList.add('hidden', 'opacity-0', 'scale-95');
     const dataToExport = getFilteredAndSortedData();
@@ -486,7 +483,7 @@ exportPdfBtn.addEventListener('click', async (e) => { // <-- 1. أضفنا async
     // الحفظ
     doc.save(`orders_report_${new Date().toISOString().split('T')[0]}.pdf`);
     showToast("تم تصدير ملف PDF بنجاح!");
-});
+}
 
 
 // --- 11. وظائف جلب البيانات (Real-time) ---
@@ -974,7 +971,7 @@ function togglePasswordVisibility(inputElement, toggleElement) {
     if (type === 'password') {
         icon.innerHTML = `<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-.258 1.055-.67 2.053-1.208 2.978M15 12a3 3 0 11-6 0 3 3 0 016 0z" />`;
     } else {
-        icon.innerHTML = `<path d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7 .844-3.14 3.1-5.64 5.922-6.756M12 12a3 3 0 100-6 3 3 0 000 6z" /><path d"M1 1l22 22" />`;
+        icon.innerHTML = `<path d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7 .844-3.14 3.1-5.64 5.922-6.756M12 12a3 3 0 100-6 3 3 0 000 6z" /><path d="M1 1l22 22" />`;
     }
 }
 
